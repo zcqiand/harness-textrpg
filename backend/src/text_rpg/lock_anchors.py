@@ -1,0 +1,15 @@
+"""锁测试锚表。
+
+ANCHORS[lock_id] = {"pass": <pytest 用例 id>, "deny": <pytest 用例 id>}
+——每个注册锁须有正反两条 pytest 断言锚，与锁断言测试一一对应。
+
+骨架为空表：逐章条目自 Task 7 起随章回包补入。
+启动自审（locks.audit）会在锚未覆盖时拒绝启动，
+另有 pytest 侧覆盖检查（后续任务加装）会保持红直到锚补齐。
+"""
+
+from __future__ import annotations
+
+__all__ = ["ANCHORS"]
+
+ANCHORS: dict = {}
