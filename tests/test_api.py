@@ -272,3 +272,22 @@ def test_main_uses_app_port(monkeypatch):
     webserver.main()
     assert captured["port"] == 8806
     assert captured["app"] is webserver.app
+
+
+def test_startup_audit_gate_blocks_broken_world():
+    """spec §5.1：启动自审 errors 非空 → 拒绝启动（RuntimeError 带错误明细）。"""
+    from text_rpg import webserver
+    from text_rpg.lock_anchors import ANCHORS
+    from text_rpg.locks import build_registry
+
+    # 坏世界（悬空锁引用）→ RuntimeError 点名锁 id
+    broken = make_world()
+    broken.chapters[0].scenes[0].choices[0].lock = "ghost_lock"
+    with pytest.raises(RuntimeError, match="ghost_lock"):
+        webserver._audit_gate(broken, build_registry(broken), {})
+
+    # 干净世界 + 全覆盖锚 → 静默通过（不抛即过）
+    clean = make_world()
+    full = {k: {"pass": "p", "deny": "d"} for k in build_registry(clean)}
+    webserver._audit_gate(clean, build_registry(clean), full)
+    assert ANCHORS  # 真世界装配走同一道闸：真锚表非空

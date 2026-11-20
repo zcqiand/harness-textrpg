@@ -142,6 +142,10 @@ def test_registry_is_union_of_chapter_locks():
     assert registry["gate2"].chapter_id == "ch02"
 
 
-def test_anchors_skeleton_is_empty_dict():
-    # 骨架契约：本任务只交付空表，逐章条目 Task 7 起补
-    assert ANCHORS == {}
+def test_anchors_ch01_entries_have_both_sides():
+    # 锚条目契约：Task 7 起逐章补入，每条须带 pass/deny 双侧 pytest 用例 id
+    for lock_id in ("lock_ch01_rations_gate", "lock_ch01_temple_spot", "lock_ch01_shortcut"):
+        entry = ANCHORS[lock_id]
+        assert set(entry) == {"pass", "deny"}
+        assert entry["pass"].startswith("test_lock_pass[")
+        assert entry["deny"].startswith("test_lock_deny[")

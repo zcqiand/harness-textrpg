@@ -12,4 +12,17 @@ from __future__ import annotations
 
 __all__ = ["ANCHORS"]
 
-ANCHORS: dict = {}
+ANCHORS: dict = {
+    "lock_ch01_rations_gate": {
+        "pass": "test_lock_pass[lock_ch01_rations_gate]",
+        "deny": "test_lock_deny[lock_ch01_rations_gate]",
+    },
+    "lock_ch01_temple_spot": {
+        "pass": "test_lock_pass[lock_ch01_temple_spot]",
+        "deny": "test_lock_deny[lock_ch01_temple_spot]",
+    },
+    "lock_ch01_shortcut": {
+        "pass": "test_lock_pass[lock_ch01_shortcut]",
+        "deny": "test_lock_deny[lock_ch01_shortcut]",
+    },
+}

@@ -1,0 +1,72 @@
+{
+  "id": "ch01",
+  "title": "第一回 两界山前",
+  "entry_locks": [],
+  "locks": [
+    {
+      "id": "lock_ch01_rations_gate",
+      "requires": [{"item": "dry_rations"}],
+      "denial": "腹中无粮，如何翻山？先向村家化些干粮再走。"
+    },
+    {
+      "id": "lock_ch01_temple_spot",
+      "requires": [{"attr": "insight", "op": ">=", "value": 2}],
+      "denial": "壁画笔意幽微，悟性未到，看不出其中门道。"
+    },
+    {
+      "id": "lock_ch01_shortcut",
+      "requires": [{"flag": "helped_woodcutter"}],
+      "denial": "不识樵径所在，须得樵夫指路方可取捷径。"
+    }
+  ],
+  "scenes": [
+    {
+      "id": "s01_village",
+      "text": "晨光初照，两界山遥遥在望。山下小村炊烟未散，师徒一行在此歇脚：前路乏粮，再往西便是虎狼之地。",
+      "choices": [
+        {"id": "c_take_rations", "text": "向村家化些干粮", "effects": [{"item_add": "dry_rations"}]},
+        {"id": "c_talk_woodcutter", "text": "与门前樵夫攀谈", "goto": "s01_woodcutter_hut", "effects": [{"flag": "helped_woodcutter"}, {"attr": {"insight": 1}}]},
+        {"id": "c_leave", "text": "辞别村舍，望山而行", "lock": "lock_ch01_rations_gate", "goto": "s01_foothill"}
+      ]
+    },
+    {
+      "id": "s01_woodcutter_hut",
+      "text": "樵夫引师徒入茅舍奉茶。他曾入山遇险，幸得相救，因此感念东土圣僧，愿指点入山樵径。",
+      "choices": [
+        {"id": "c_listen", "text": "细听樵夫指点山路", "goto": "s01_village", "effects": [{"attr": {"insight": 1}}]},
+        {"id": "c_visit_temple", "text": "顺道去山间古刹一观", "goto": "s01_temple"}
+      ]
+    },
+    {
+      "id": "s01_temple",
+      "text": "古刹荒败，香火久绝。残壁上一幅壁画笔意连绵：云外金山，雷音隐隐，画工似有深意存焉。",
+      "choices": [
+        {"id": "c_spot_mural", "text": "驻足细观壁画", "lock": "lock_ch01_temple_spot", "effects": [{"attr": {"insight": 1}}]},
+        {"id": "c_leave_temple", "text": "出刹归路", "goto": "s01_village"}
+      ]
+    },
+    {
+      "id": "s01_foothill",
+      "text": "两界山脚，官道分岔：樵径直上主峰之阴，近而险；大路绕行山阳，远而缓。山下石碑镌着「两界山」三字，碑身斑驳，界着两边天地。",
+      "choices": [
+        {"id": "c_shortcut", "text": "依樵夫指路，取樵径捷径", "lock": "lock_ch01_shortcut", "effects": [{"flag": "chapter_ch01_complete"}]},
+        {"id": "c_long_way", "text": "不贪捷径，绕行大路", "goto": "s01_cliff"}
+      ]
+    },
+    {
+      "id": "s01_cliff",
+      "text": "大路盘山而上，行至崖前，径愈窄，风愈紧。回首来路已在云下，师徒歇马崖边，且行且望。",
+      "choices": [
+        {"id": "c_press_on", "text": "歇马片时，再行攀路", "effects": [{"flag": "went_long_way"}]}
+      ]
+    }
+  ],
+  "endings": [
+    {
+      "id": "turned_back",
+      "title": "半途折返",
+      "requires": [{"flag": "went_long_way"}],
+      "mid_chapter": true
+    }
+  ]
+}

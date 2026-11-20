@@ -13,7 +13,8 @@ from fastapi import FastAPI
 
 from text_rpg.chapters import load_world
 from text_rpg.engine import GameEngine
-from text_rpg.locks import build_registry
+from text_rpg.lock_anchors import ANCHORS
+from text_rpg.locks import audit, build_registry
 from text_rpg.persistence import SessionStore
 from text_rpg.routes import build_router
 
@@ -24,9 +25,17 @@ def _data_dir() -> Path:
     return Path(__file__).resolve().parents[3] / "data"
 
 
+def _audit_gate(world, registry, anchors) -> None:
+    """启动自审闸：errors 非空 → 拒绝启动（spec §5.1）。"""
+    report = audit(world, registry, anchors)
+    if report.errors:
+        raise RuntimeError("启动自审未通过，拒绝启动：\n- " + "\n- ".join(report.errors))
+
+
 def create_app() -> FastAPI:
     world = load_world(_data_dir())
     registry = build_registry(world)
+    _audit_gate(world, registry, ANCHORS)
     engine = GameEngine(world, registry)
     application = FastAPI(title="harness-textrpg")
     application.include_router(build_router(engine, SessionStore()))
