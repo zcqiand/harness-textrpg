@@ -8,6 +8,7 @@
 
 errors 非空 → 拒绝启动；warnings 仅记录，不拦启动。
 """
+# @impl M02.F02.I02
 
 from __future__ import annotations
 

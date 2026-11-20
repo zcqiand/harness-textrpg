@@ -8,6 +8,8 @@ import type {
   MissingCondition,
   SceneView,
 } from "../types";
+// @entry M03.F02.I01
+// @entry M03.F02.I02
 
 interface JourneyViewProps {
   gameId: string;

@@ -13,6 +13,8 @@
 - unlocked_locks：注册表中「提交前未满足、效果执行后满足」的锁 id
   （即本次抉择推开的门），按注册表登记序返回。
 """
+# @impl M02.F01.I01
+# @impl M02.F01.I02
 
 from __future__ import annotations
 

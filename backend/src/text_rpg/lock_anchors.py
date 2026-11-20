@@ -7,6 +7,7 @@ ANCHORS[lock_id] = {"pass": <pytest 用例 id>, "deny": <pytest 用例 id>}
 启动自审（locks.audit）会在锚未覆盖时拒绝启动，
 另有 pytest 侧覆盖检查（后续任务加装）会保持红直到锚补齐。
 """
+# @impl M02.F02.I03
 
 from __future__ import annotations
 

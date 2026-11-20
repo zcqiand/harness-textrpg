@@ -6,6 +6,12 @@
 - 未知 scene_id / choice_id → 400（engine KeyError / ValueError 收敛）
 - 终局后提交 → 400（engine ValueError「游戏已结束」）
 """
+# @impl M01.F01.I01
+# @impl M01.F01.I02
+# @impl M01.F01.I03
+# @impl M01.F01.I04
+# @impl M01.F01.I05
+# @impl M01.F01.I06
 
 from __future__ import annotations
 

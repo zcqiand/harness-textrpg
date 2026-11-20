@@ -3,6 +3,7 @@
 条件三类：flag / attr / item；效果四类：attr / item_add / item_remove / flag。
 条件列表全 AND 语义。形状不符 raise ValueError（可读中文信息）。
 """
+# @impl M02.F02.I01
 
 from __future__ import annotations
 

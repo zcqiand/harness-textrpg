@@ -3,6 +3,7 @@
 会话生命周期 = 服务进程生命周期（重启即清空，老 id 404）。
 序列化边界在 routes 层，本层只管存取。
 """
+# @impl M02.F04.I01
 
 from __future__ import annotations
 

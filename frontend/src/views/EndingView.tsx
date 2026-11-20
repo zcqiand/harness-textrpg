@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Ending, EndingView as EndingRow, MissingCondition } from "../types";
+// @entry M03.F03.I01
+// @entry M03.F03.I02
 
 interface EndingViewProps {
   /** 全部结局行（后端 endings_view，satisfied 为当前局内即时求值）。 */

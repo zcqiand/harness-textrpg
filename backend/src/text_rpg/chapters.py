@@ -4,6 +4,9 @@
 条件（requires）与效果（effects）在本层保持原始 dict，
 由 contracts.evaluate / contracts.apply 原样消费。
 """
+# @impl M02.F03.I01
+# @impl M04.F01.I01
+# @impl M04.F01.I02
 
 from __future__ import annotations
 

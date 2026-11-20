@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "project": "harness-textrpg",
+  "current_task": "补齐 code-suite 建仓规范（stack.json+function-tree+锚点），对接 export_handoff",
+  "done": [
+    "游戏本体+CI+部署链完成，tag v1.0.2-20261120 冻结",
+    "2026-11-20 规范三件套落盘，重冻结 v1.0.3-20261120"
+  ],
+  "next": "《Harness 工程》写作按 handoff.json 引用本仓",
+  "open_questions": [],
+  "dont": [
+    "不要改 .harness/stack.json 让门变松",
+    "不要给 skip 的测试挂功能 ID",
+    "锁评估只在后端求值一次，前端不得复读条件"
+  ],
+  "last_gate_passed_at": null
+}

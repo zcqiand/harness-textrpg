@@ -1,0 +1,321 @@
+{
+  "schema": 1,
+  "project": "harness-textrpg",
+  "functions": {
+    "modules": 4,
+    "features": 9,
+    "items": 22
+  },
+  "warnings_total": 66,
+  "warnings": {
+    "已上线但无设计映射": [
+      "M01.F01.I01",
+      "M01.F01.I02",
+      "M01.F01.I03",
+      "M01.F01.I04",
+      "M01.F01.I05",
+      "M01.F01.I06",
+      "M02.F01.I01",
+      "M02.F01.I02",
+      "M02.F02.I01",
+      "M02.F02.I02",
+      "M02.F02.I03",
+      "M02.F03.I01",
+      "M02.F04.I01",
+      "M03.F01.I01",
+      "M03.F01.I02",
+      "M03.F02.I01",
+      "M03.F02.I02",
+      "M03.F02.I03",
+      "M03.F03.I01",
+      "M03.F03.I02",
+      "M04.F01.I01",
+      "M04.F01.I02"
+    ],
+    "已上线但无测试引用": [
+      "M01.F01.I01",
+      "M01.F01.I02",
+      "M01.F01.I03",
+      "M01.F01.I04",
+      "M01.F01.I05",
+      "M01.F01.I06",
+      "M02.F01.I01",
+      "M02.F01.I02",
+      "M02.F02.I01",
+      "M02.F02.I02",
+      "M02.F02.I03",
+      "M02.F03.I01",
+      "M02.F04.I01",
+      "M03.F01.I01",
+      "M03.F01.I02",
+      "M03.F02.I01",
+      "M03.F02.I02",
+      "M03.F02.I03",
+      "M03.F03.I01",
+      "M03.F03.I02",
+      "M04.F01.I01",
+      "M04.F01.I02"
+    ],
+    "已上线但不在任何流程且非孤儿白名单": [
+      "M01.F01.I01",
+      "M01.F01.I02",
+      "M01.F01.I03",
+      "M01.F01.I04",
+      "M01.F01.I05",
+      "M01.F01.I06",
+      "M02.F01.I01",
+      "M02.F01.I02",
+      "M02.F02.I01",
+      "M02.F02.I02",
+      "M02.F02.I03",
+      "M02.F03.I01",
+      "M02.F04.I01",
+      "M03.F01.I01",
+      "M03.F01.I02",
+      "M03.F02.I01",
+      "M03.F02.I02",
+      "M03.F02.I03",
+      "M03.F03.I01",
+      "M03.F03.I02",
+      "M04.F01.I01",
+      "M04.F01.I02"
+    ]
+  },
+  "unreachable_shipped": [],
+  "function_map": {
+    "M01.F01.I01": {
+      "name": "健康检查端点",
+      "status": "已上线",
+      "type": "接口",
+      "requirements": [],
+      "flows": [],
+      "designs": [],
+      "tests": [],
+      "entry": []
+    },
+    "M01.F01.I02": {
+      "name": "章回目录端点",
+      "status": "已上线",
+      "type": "接口",
+      "requirements": [],
+      "flows": [],
+      "designs": [],
+      "tests": [],
+      "entry": []
+    },
+    "M01.F01.I03": {
+      "name": "建局端点",
+      "status": "已上线",
+      "type": "接口",
+      "requirements": [],
+      "flows": [],
+      "designs": [],
+      "tests": [],
+      "entry": []
+    },
+    "M01.F01.I04": {
+      "name": "读局端点",
+      "status": "已上线",
+      "type": "接口",
+      "requirements": [],
+      "flows": [],
+      "designs": [],
+      "tests": [],
+      "entry": []
+    },
+    "M01.F01.I05": {
+      "name": "提交选择端点",
+      "status": "已上线",
+      "type": "接口",
+      "requirements": [],
+      "flows": [],
+      "designs": [],
+      "tests": [],
+      "entry": []
+    },
+    "M01.F01.I06": {
+      "name": "错误形状收敛",
+      "status": "已上线",
+      "type": "接口",
+      "requirements": [],
+      "flows": [],
+      "designs": [],
+      "tests": [],
+      "entry": []
+    },
+    "M02.F01.I01": {
+      "name": "选择提交流程",
+      "status": "已上线",
+      "type": "接口",
+      "requirements": [],
+      "flows": [],
+      "designs": [],
+      "tests": [],
+      "entry": []
+    },
+    "M02.F01.I02": {
+      "name": "三视图投影",
+      "status": "已上线",
+      "type": "接口",
+      "requirements": [],
+      "flows": [],
+      "designs": [],
+      "tests": [],
+      "entry": []
+    },
+    "M02.F02.I01": {
+      "name": "条件与效果契约",
+      "status": "已上线",
+      "type": "接口",
+      "requirements": [],
+      "flows": [],
+      "designs": [],
+      "tests": [],
+      "entry": []
+    },
+    "M02.F02.I02": {
+      "name": "锁注册表与启动自审",
+      "status": "已上线",
+      "type": "接口",
+      "requirements": [],
+      "flows": [],
+      "designs": [],
+      "tests": [],
+      "entry": []
+    },
+    "M02.F02.I03": {
+      "name": "锁测试锚表",
+      "status": "已上线",
+      "type": "接口",
+      "requirements": [],
+      "flows": [],
+      "designs": [],
+      "tests": [],
+      "entry": []
+    },
+    "M02.F03.I01": {
+      "name": "章回包加载器",
+      "status": "已上线",
+      "type": "接口",
+      "requirements": [],
+      "flows": [],
+      "designs": [],
+      "tests": [],
+      "entry": []
+    },
+    "M02.F04.I01": {
+      "name": "内存会话存取",
+      "status": "已上线",
+      "type": "接口",
+      "requirements": [],
+      "flows": [],
+      "designs": [],
+      "tests": [],
+      "entry": []
+    },
+    "M03.F01.I01": {
+      "name": "设置屏页面",
+      "status": "已上线",
+      "type": "页面",
+      "requirements": [],
+      "flows": [],
+      "designs": [],
+      "tests": [],
+      "entry": [
+        "frontend/src/views/SetupView.tsx"
+      ]
+    },
+    "M03.F01.I02": {
+      "name": "开始建局提交",
+      "status": "已上线",
+      "type": "按钮",
+      "requirements": [],
+      "flows": [],
+      "designs": [],
+      "tests": [],
+      "entry": [
+        "frontend/src/views/SetupView.tsx"
+      ]
+    },
+    "M03.F02.I01": {
+      "name": "旅程屏页面",
+      "status": "已上线",
+      "type": "页面",
+      "requirements": [],
+      "flows": [],
+      "designs": [],
+      "tests": [],
+      "entry": [
+        "frontend/src/views/JourneyView.tsx"
+      ]
+    },
+    "M03.F02.I02": {
+      "name": "选项提交与场景刷新",
+      "status": "已上线",
+      "type": "按钮",
+      "requirements": [],
+      "flows": [],
+      "designs": [],
+      "tests": [],
+      "entry": [
+        "frontend/src/views/JourneyView.tsx"
+      ]
+    },
+    "M03.F02.I03": {
+      "name": "终局轮询侦测",
+      "status": "已上线",
+      "type": "查询",
+      "requirements": [],
+      "flows": [],
+      "designs": [],
+      "tests": [],
+      "entry": [
+        "frontend/src/App.tsx"
+      ]
+    },
+    "M03.F03.I01": {
+      "name": "结局屏页面",
+      "status": "已上线",
+      "type": "页面",
+      "requirements": [],
+      "flows": [],
+      "designs": [],
+      "tests": [],
+      "entry": [
+        "frontend/src/views/EndingView.tsx"
+      ]
+    },
+    "M03.F03.I02": {
+      "name": "全结局行满足状态展示",
+      "status": "已上线",
+      "type": "报表",
+      "requirements": [],
+      "flows": [],
+      "designs": [],
+      "tests": [],
+      "entry": [
+        "frontend/src/views/EndingView.tsx"
+      ]
+    },
+    "M04.F01.I01": {
+      "name": "开局配置",
+      "status": "已上线",
+      "type": "接口",
+      "requirements": [],
+      "flows": [],
+      "designs": [],
+      "tests": [],
+      "entry": []
+    },
+    "M04.F01.I02": {
+      "name": "章回包集",
+      "status": "已上线",
+      "type": "接口",
+      "requirements": [],
+      "flows": [],
+      "designs": [],
+      "tests": [],
+      "entry": []
+    }
+  }
+}

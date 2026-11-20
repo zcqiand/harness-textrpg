@@ -1,4 +1,6 @@
 import { useState } from "react";
+// @entry M03.F01.I01
+// @entry M03.F01.I02
 
 interface SetupViewProps {
   onStart: (name: string) => Promise<void>;

@@ -1,0 +1,53 @@
+{
+  "schema": 1,
+  "suite_version": "0.6.0",
+  "project": "harness-textrpg",
+  "stack": "generic",
+  "gates": {
+    "L1": {
+      "name": "类型（tsc --noEmit，frontend strict）",
+      "cmd": [
+        "npx",
+        "--no",
+        "--",
+        "tsc",
+        "--noEmit",
+        "-p",
+        "frontend"
+      ],
+      "fix": "补全/修正类型；禁 any、禁放宽 tsconfig。形状真源=frontend/src/types.ts（对齐后端 spec §5.3 序列化形状）。"
+    },
+    "L2": {
+      "name": "后端测试（pytest 全量，无 Key/无网/无 Docker）",
+      "cmd": [
+        "python",
+        "-m",
+        "pytest",
+        "tests",
+        "-q"
+      ],
+      "fix": "先让 pytest 全绿（仓根 pytest.ini 已把 backend/src 接进 pythonpath）。改测试前必须先说明理由；动 contracts/locks 后另跑锁断言回归（每锁正反双锚）。"
+    },
+    "L4": {
+      "name": "前端测试（vitest 全量，jsdom）",
+      "cmd": [
+        "npm",
+        "--prefix",
+        "frontend",
+        "run",
+        "test"
+      ],
+      "fix": "先让 vitest 全绿（frontend/ 内跑，根目录 npx 解析不到 frontend 依赖故走 npm --prefix）。改测试前必须先说明理由。"
+    }
+  },
+  "trace_cmd": [],
+  "trace_env": {},
+  "source_dirs": [
+    "backend/src",
+    "frontend/src"
+  ],
+  "test_dirs": [
+    "tests",
+    "frontend/src/__tests__"
+  ]
+}

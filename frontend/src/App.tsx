@@ -4,6 +4,7 @@ import type { CreatedGame, GameState, GameView } from "./types";
 import EndingView from "./views/EndingView";
 import JourneyView from "./views/JourneyView";
 import SetupView from "./views/SetupView";
+// @entry M03.F02.I03
 
 type Phase =
   | { kind: "setup" }
