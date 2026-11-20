@@ -42,6 +42,18 @@ def state_to_dict(state: GameState) -> dict:
 
 
 def build_router(engine: GameEngine, store: SessionStore) -> APIRouter:
+    def _scene_view(state: GameState) -> dict:
+        """当前场景视图：{id, text}。text 从 world 章包取（spec §5.4 场景文案）。"""
+
+        def _text() -> str:
+            for chapter in engine.world.chapters:
+                for scene in chapter.scenes:
+                    if scene.id == state.current_scene:
+                        return scene.text
+            return ""  # 悬空 current_scene（理论不可达）：退空串，state 本体仍是真源
+
+        return {"id": state.current_scene, "text": _text()}
+
     router = APIRouter()
 
     @router.get("/api/health")
@@ -78,6 +90,7 @@ def build_router(engine: GameEngine, store: SessionStore) -> APIRouter:
         state = _load_game(game_id)
         return {
             "state": state_to_dict(state),
+            "scene": _scene_view(state),
             "choices": engine.choices_view(state),
             "endings": engine.endings_view(state),
             "chapters": engine.chapters_view(state),

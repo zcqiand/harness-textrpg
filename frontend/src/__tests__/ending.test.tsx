@@ -61,6 +61,10 @@ const normalState: GameState = {
 function viewOf(state: typeof normalState, endings: EndingRow[]): GameView {
   return {
     state,
+    scene: {
+      id: "s01_village",
+      text: "晨光初照，两界山遥遥在望。山下小村炊烟未散，师徒一行在此歇脚：前路乏粮，再往西便是虎狼之地。",
+    },
     choices: [
       {
         id: "c_take_rations",

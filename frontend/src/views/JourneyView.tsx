@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, getGame, submitChoice } from "../api";
-import type { ChapterView, ChoiceView, GameView, GameState, MissingCondition } from "../types";
+import type {
+  ChapterView,
+  ChoiceView,
+  GameView,
+  GameState,
+  MissingCondition,
+  SceneView,
+} from "../types";
 
 interface JourneyViewProps {
   gameId: string;
@@ -14,6 +21,11 @@ const MISSING_TYPE_LABELS: Record<MissingCondition["type"], string> = {
   flag: "旗标",
   attr: "属性",
 };
+
+/** 布尔量（flag/item 条件）→「有/无」；数值（attr 条件）原样呈现。 */
+function formatAmount(value: boolean | number): string {
+  return typeof value === "boolean" ? (value ? "有" : "无") : String(value);
+}
 
 /** 解锁高亮时长（ms）。 */
 const UNLOCK_FLASH_MS = 1500;
@@ -32,6 +44,7 @@ function isSessionGone(exc: unknown): boolean {
 export default function JourneyView({ gameId, initialState, onSessionGone }: JourneyViewProps) {
   const [state, setState] = useState<GameState>(initialState);
   const [chapters, setChapters] = useState<ChapterView[]>([]);
+  const [scene, setScene] = useState<SceneView | null>(null);
   const [choices, setChoices] = useState<ChoiceView[] | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -86,6 +99,7 @@ export default function JourneyView({ gameId, initialState, onSessionGone }: Jou
     return getGame(gameId)
       .then((view) => {
         setState(view.state);
+        setScene(view.scene);
         setChapters(view.chapters);
         setChoices(view.choices);
         return view;
@@ -133,6 +147,7 @@ export default function JourneyView({ gameId, initialState, onSessionGone }: Jou
   return (
     <section aria-label="探索视图">
       <h2>{chapterTitle}</h2>
+      {scene !== null && <p className="scene-text">{scene.text}</p>}
       {error !== null && <p role="alert">{error}</p>}
       {choices === null ? (
         <p>装载中……</p>
@@ -167,7 +182,7 @@ export default function JourneyView({ gameId, initialState, onSessionGone }: Jou
                   {choice.missing.map((m) => (
                     <div key={`${m.type}-${m.key}`}>
                       <p>{`缺失类型：${m.type}`}</p>
-                      <p>{`缺失项：${MISSING_TYPE_LABELS[m.type]} ${m.key}（现有 ${m.have}，需 ${m.need}）`}</p>
+                      <p>{`缺失项：${MISSING_TYPE_LABELS[m.type]} ${m.key}（现有 ${formatAmount(m.have)}，需 ${formatAmount(m.need)}）`}</p>
                     </div>
                   ))}
                   <button type="button" onClick={() => setDetailId(null)}>

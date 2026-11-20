@@ -32,6 +32,10 @@ const createdGame: CreatedGame = {
 
 const gameView: GameView = {
   state: createdGame.state,
+  scene: {
+    id: "s1",
+    text: "山门前",
+  },
   choices: [],
   endings: [],
   chapters: [{ id: "ch01", title: "第一回 两界山前", locked: false }],

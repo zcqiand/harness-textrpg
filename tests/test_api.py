@@ -4,6 +4,8 @@
 形状真源 = spec §5.3。
 """
 
+from pathlib import Path
+
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -151,9 +153,10 @@ def test_get_game_embeds_choices_endings_chapters_views():
     resp = client.get(f"/api/games/{game_id}")
     assert resp.status_code == 200
     body = resp.json()
-    # state + 三视图四件
-    assert set(body) == {"state", "choices", "endings", "chapters"}
+    # state + scene + 三视图五件
+    assert set(body) == {"state", "scene", "choices", "endings", "chapters"}
     assert body["state"]["current_scene"] == "s1"
+    assert body["scene"] == {"id": "s1", "text": "山门前"}
     # choices_view：逐 choice 锁评估
     by_id = {c["id"]: c for c in body["choices"]}
     assert set(by_id) == {"look", "pray", "open", "fall"}
@@ -291,3 +294,27 @@ def test_startup_audit_gate_blocks_broken_world():
     full = {k: {"pass": "p", "deny": "d"} for k in build_registry(clean)}
     webserver._audit_gate(clean, build_registry(clean), full)
     assert ANCHORS  # 真世界装配走同一道闸：真锚表非空
+
+
+def test_get_game_scene_carries_real_ch01_prose():
+    """终审修复：read_game 响应携带 scene={id,text}——场景正文直达前端（spec §5.4 场景文案）。
+
+    用真仓 data/ 装配引擎：断言 scene.id = 起手场景，text = ch01 真实正文前缀。
+    """
+    from text_rpg.chapters import load_world
+    from text_rpg.locks import build_registry
+    from text_rpg.persistence import SessionStore
+    from text_rpg.routes import build_router
+
+    data_dir = Path(__file__).resolve().parents[1] / "data"
+    world = load_world(data_dir)
+    engine = GameEngine(world, build_registry(world))
+    app = FastAPI()
+    app.include_router(build_router(engine, SessionStore()))
+    client = TestClient(app)
+    game_id = new_game(client)
+    resp = client.get(f"/api/games/{game_id}")
+    assert resp.status_code == 200
+    scene = resp.json()["scene"]
+    assert scene["id"] == "s01_village"
+    assert scene["text"].startswith("晨光初照，两界山遥遥在望")

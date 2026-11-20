@@ -79,9 +79,16 @@ export interface CreatedGame {
   state: GameState;
 }
 
-/** GET /api/games/{id}：state + 三视图四件。 */
+/** 当前场景视图（read_game 的 scene 字段：id + 场景正文，spec §5.4 场景文案）。 */
+export interface SceneView {
+  id: string;
+  text: string;
+}
+
+/** GET /api/games/{id}：state + scene + 三视图五件。 */
 export interface GameView {
   state: GameState;
+  scene: SceneView;
   choices: ChoiceView[];
   endings: EndingView[];
   chapters: ChapterView[];

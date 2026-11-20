@@ -143,7 +143,7 @@ harness-textrpg/
 | `GET /api/chapters` | 章回**静态目录**（id/title/序，无局上下文，**不携带锁定状态**） |
 | `POST /api/games` | 建局（`{player_name}`）→ 201 `{id, state}` |
 | `POST /api/games/{id}/choice` | 提交抉择 `{scene_id, choice_id}` → `{messages, state, unlocked_locks, game_over, ending?}` |
-| `GET /api/games/{id}` | 读局：旗标/属性/背包/已解锁锁清单 + 当前场景逐 choice 锁评估 `{locked, missing:[{type,key,have,need}], denial}` + 4 结局条件链摘要（已满足/缺失）——**锁评估只在后端求值一次**，前端零复算 |
+| `GET /api/games/{id}` | 读局：旗标/属性/背包/已解锁锁清单 + 当前场景 `{id, text}`（场景正文直达前端，§5.4 探索态）+ 当前场景逐 choice 锁评估 `{locked, missing:[{type,key,have,need}], denial}` + 4 结局条件链摘要（已满足/缺失）——**锁评估只在后端求值一次**，前端零复算 |
 
 无 LLM、无 secret：env 契约只有 `APP_PORT`（fail-fast 必填，禁兜底默认）。
 
@@ -166,7 +166,7 @@ cd frontend && npm install --registry=https://registry.npmmirror.com
 npm run build                                   # tsc strict + vite build 零错误
 npm test -- run                                 # vitest 全绿
 # 冒烟
-APP_PORT=8806 uvicorn text_rpg.webserver:app    # /api/health ok
+APP_PORT=8806 python -c "from text_rpg.webserver import main; main()"    # /api/health ok（APP_PORT 只读于 main()，uvicorn CLI 形状会绑默认 8000）
 ```
 
 - 锁断言集：12 把锁 × 双向 ≥ 24 条用例 + 注册表自审 3 方向（悬空引用/缺断言锚/空 denial 均能红）。

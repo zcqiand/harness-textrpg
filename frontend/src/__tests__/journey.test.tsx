@@ -28,8 +28,14 @@ const lockedChoice: ChoiceView = {
   id: "c_leave",
   text: "辞别村舍，望山而行",
   locked: true,
-  missing: [{ type: "item", key: "dry_rations", have: 0, need: 1 }],
+  missing: [{ type: "item", key: "dry_rations", have: false, need: true }],
   denial: "腹中无粮，如何翻山？先向村家化些干粮再走。",
+};
+
+/** ch01 起手场景正文（与 data/chapters/ch01-two-boundary.json 逐字一致）。 */
+const villageScene = {
+  id: "s01_village",
+  text: "晨光初照，两界山遥遥在望。山下小村炊烟未散，师徒一行在此歇脚：前路乏粮，再往西便是虎狼之地。",
 };
 
 const gameView: GameView = {
@@ -43,6 +49,7 @@ const gameView: GameView = {
     game_over: false,
     ending: null,
   },
+  scene: villageScene,
   choices: [unlockedChoice, lockedChoice],
   endings: [],
   chapters: [{ id: "ch01", title: "第一回 两界山前", locked: false }],
@@ -109,7 +116,19 @@ describe("章回探索态", () => {
       await screen.findByText("腹中无粮，如何翻山？先向村家化些干粮再走。"),
     ).toBeInTheDocument();
     expect(screen.getByText("缺失类型：item")).toBeInTheDocument();
-    expect(screen.getByText("缺失项：物品 dry_rations（现有 0，需 1）")).toBeInTheDocument();
+    expect(screen.getByText("缺失项：物品 dry_rations（现有 无，需 有）")).toBeInTheDocument();
+  });
+
+  it("场景正文渲染在章题之下（read_game 的 scene 字段直达 UI）", async () => {
+    vi.mocked(getGame).mockResolvedValue(gameView);
+    render(
+      <JourneyView gameId="game-1" initialState={initialState} onSessionGone={onSessionGone} />,
+    );
+    expect(
+      await screen.findByText(
+        "晨光初照，两界山遥遥在望。山下小村炊烟未散，师徒一行在此歇脚：前路乏粮，再往西便是虎狼之地。",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("会话失效（api 404）→ 回建局态回调", async () => {

@@ -37,11 +37,17 @@ const leaveLocked: ChoiceView = {
   id: "c_leave",
   text: "辞别村舍，望山而行",
   locked: true,
-  missing: [{ type: "item", key: "dry_rations", have: 0, need: 1 }],
+  missing: [{ type: "item", key: "dry_rations", have: false, need: true }],
   denial: "腹中无粮，如何翻山？先向村家化些干粮再走。",
 };
 
 const leaveUnlocked: ChoiceView = { ...leaveLocked, locked: false, missing: [], denial: null };
+
+/** ch01 起手场景正文（与 data/chapters/ch01-two-boundary.json 逐字一致）。 */
+const villageScene = {
+  id: "s01_village",
+  text: "晨光初照，两界山遥遥在望。山下小村炊烟未散，师徒一行在此歇脚：前路乏粮，再往西便是虎狼之地。",
+};
 
 const gameState = {
   player_name: "悟空",
@@ -57,6 +63,7 @@ const gameState = {
 /** 首屏视图：c_leave 仍挂锁。 */
 const initialView: GameView = {
   state: gameState,
+  scene: villageScene,
   choices: [takeRations, talkWoodcutter, leaveLocked],
   endings: [],
   chapters: [{ id: "ch01", title: "第一回 两界山前", locked: false }],
@@ -65,6 +72,7 @@ const initialView: GameView = {
 /** 提交化缘后的视图：lock_ch01_rations_gate 已满足，c_leave 解锁。 */
 const unlockedView: GameView = {
   state: { ...gameState, backpack: ["dry_rations"] },
+  scene: villageScene,
   choices: [takeRations, talkWoodcutter, leaveUnlocked],
   endings: [],
   chapters: [{ id: "ch01", title: "第一回 两界山前", locked: false }],
