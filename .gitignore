@@ -6,3 +6,6 @@ __pycache__/
 .pytest_cache/
 **/_work/
 .vite/
+
+# suite 门禁运行产物
+.state/
