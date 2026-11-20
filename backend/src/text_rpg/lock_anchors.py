@@ -25,4 +25,20 @@ ANCHORS: dict = {
         "pass": "test_lock_pass[lock_ch01_shortcut]",
         "deny": "test_lock_deny[lock_ch01_shortcut]",
     },
+    "lock_ch02_entry": {
+        "pass": "test_lock_pass[lock_ch02_entry]",
+        "deny": "test_lock_deny[lock_ch02_entry]",
+    },
+    "lock_ch02_second_strike": {
+        "pass": "test_lock_pass[lock_ch02_second_strike]",
+        "deny": "test_lock_deny[lock_ch02_second_strike]",
+    },
+    "lock_ch02_third_strike": {
+        "pass": "test_lock_pass[lock_ch02_third_strike]",
+        "deny": "test_lock_deny[lock_ch02_third_strike]",
+    },
+    "lock_ch02_report_tang": {
+        "pass": "test_lock_pass[lock_ch02_report_tang]",
+        "deny": "test_lock_deny[lock_ch02_report_tang]",
+    },
 }
