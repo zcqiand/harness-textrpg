@@ -31,7 +31,7 @@
 ## 3. 约束（沿用家族铁律，逐条）
 
 - **TDD**：每模块先失败测试再实现；锁的断言先于锁的实现。
-- **version-lock.json**：依赖钉死，不引入 lock 外的库。后端 Python 3.11+，FastAPI + uvicorn + pytest（与书一 text-adventure-rpg 同栈同钉法）；前端 React 18 + TypeScript + Vite + vitest。
+- **version-lock.json**：依赖钉死，不引入 lock 外的库。后端 Python 3.11+，FastAPI + uvicorn + pytest（钉版取本机实装且与 agent 家族三兄弟仓一致的已验证版本）；前端 React 19.1 + TypeScript + Vite + vitest 3（人裁 2026-11-20：以 harness-starter 实况为准，替代草稿的「React 18」）。
 - **mock-friendly**：`pytest -q` 无 Key、无网、无 Docker 全绿；后端零第三方运行时依赖超出 lock 清单者禁止。
 - **数据驱动**：场景/抉择/锁/结局全部从 `data/chapters/*.json` 加载，禁止硬编码进 Python。
 - **npm 一律 npmmirror**。
