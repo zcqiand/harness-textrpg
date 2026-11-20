@@ -2,6 +2,7 @@
 
 from types import SimpleNamespace
 
+import pytest
 from text_rpg.contracts import apply, evaluate
 
 
@@ -34,6 +35,17 @@ def test_item_and_multi_condition_and_semantics():
     st = make_state(backpack=["dry_rations"])
     r = evaluate([{"item": "dry_rations"}, {"item": "fan"}], st)
     assert not r.satisfied and r.missing[0]["type"] == "item"
+
+
+def test_attr_condition_value_must_be_int():
+    st = make_state(attributes={"insight": 1})
+    for op in (">=", "=="):
+        with pytest.raises(ValueError):
+            evaluate([{"attr": "insight", "op": op, "value": "3"}], st)
+        with pytest.raises(ValueError):
+            evaluate([{"attr": "insight", "op": op, "value": None}], st)
+    with pytest.raises(ValueError):
+        evaluate([{"attr": "insight", "op": "==", "value": True}], st)
 
 
 def test_effects_order_and_negative_delta():

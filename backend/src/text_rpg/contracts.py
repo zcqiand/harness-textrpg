@@ -52,6 +52,8 @@ def _eval_cond(cond, state):
             raise ValueError(f"attr 条件算子只支持 >= 与 ==，实得 {op!r}")
         if not isinstance(key, str):
             raise ValueError(f"attr 条件键须为字符串，实得 {type(key).__name__}")
+        if isinstance(value, bool) or not isinstance(value, int):
+            raise ValueError(f"attr 条件 value 须为整数，实得 {type(value).__name__}")
         attrs = _attributes(state)
         have = attrs.get(key, 0)
         if _ATTR_OPS[op](have, value):
