@@ -12,9 +12,11 @@ FastAPI 引擎 + React 四态前端（建局 / 探索 / 结局图 / 解锁高亮
 pip install -e ./backend
 pytest -q                # 74 例全绿（含 12 锚 ×2 参数化）
 
-APP_PORT=8806 uvicorn text_rpg.webserver:app
+APP_PORT=8806 python -c "from text_rpg.webserver import main; main()"
 # APP_PORT 必填 fail-fast（缺省即 RuntimeError，无默认端口兜底）
 # 冒烟：curl http://127.0.0.1:8806/api/health → {"ok":true,"mode":"local"}
+# 注意：`uvicorn text_rpg.webserver:app`（CLI 形状）不消费 APP_PORT，会绑 uvicorn 默认 8000——
+# APP_PORT 只在 webserver.main() 里读，起服/冒烟一律走上面 main() 入口。
 ```
 
 前端（Node ≥20；npm 依赖一律走 npmmirror，仓内 `frontend/.npmrc` 已钉 `registry=https://registry.npmmirror.com`）：
