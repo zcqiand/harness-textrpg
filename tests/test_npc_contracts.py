@@ -104,6 +104,26 @@ def test_audit_empty_outside_is_error():
     )
 
 
+# fn: M02.F05.I03
+def test_audit_blank_red_line_word_is_error():
+    """护栏消费面闭口（M02.F05.I03 审查裁定④）：red_lines 词项为空串/纯空白 →
+    audit 红，报错形状与 event_tags 空白词同款。"""
+    bad = dict(_valid_dict(), red_lines=["自称神明", "   "])
+    world = load_world(_REPO_DATA)
+    report = audit_npcs([npc_from_dict(bad)], world)
+    assert any("red_lines" in msg and "空白" in msg for msg in report.errors)
+
+
+# fn: M02.F05.I03
+def test_audit_blank_outside_word_is_error():
+    """护栏消费面闭口（M02.F05.I03 审查裁定④）：outside 词项为空串/纯空白 →
+    audit 红，报错形状与 event_tags 空白词同款。"""
+    bad = dict(_valid_dict(), outside=["手机", ""])
+    world = load_world(_REPO_DATA)
+    report = audit_npcs([npc_from_dict(bad)], world)
+    assert any("outside" in msg and "空白" in msg for msg in report.errors)
+
+
 # fn: M02.F05.I01
 def test_npc_from_dict_missing_required_key_raises():
     d = _valid_dict()

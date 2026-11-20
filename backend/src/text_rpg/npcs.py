@@ -87,8 +87,12 @@ def audit_npcs(npcs: list, world: World) -> AuditReport:
             errors.append(f"NPC「{n.id}」悬空 chapter 引用：{n.chapter}")
         if not n.red_lines:
             errors.append(f"NPC「{n.id}」red_lines 为空（前置红线拦截面不得为空）")
+        if any(not w.strip() for w in n.red_lines):
+            errors.append(f"NPC「{n.id}」red_lines 词表含空串/纯空白红线词")
         if not n.outside:
             errors.append(f"NPC「{n.id}」outside 为空（知识边界黑名单不得为空）")
+        if any(not w.strip() for w in n.outside):
+            errors.append(f"NPC「{n.id}」outside 词表含空串/纯空白禁区词")
         if not isinstance(n.memory_window, int) or n.memory_window <= 0:
             errors.append(f"NPC「{n.id}」memory_window 必须为正整数，实为 {n.memory_window!r}")
         tags = n.memory_event_tags
