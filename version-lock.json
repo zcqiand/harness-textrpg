@@ -1,0 +1,26 @@
+{
+  "project_id": "harness-textrpg",
+  "locked_at": "2026-11-20",
+  "python": "3.11+（开发机 anaconda3 3.11）",
+  "dependencies": {
+    "fastapi": "0.141.1",
+    "uvicorn": "0.54.0",
+    "pydantic": "2.12.5",
+    "pytest": "9.1.1",
+    "httpx": "0.28.1"
+  },
+  "frontend": {
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "vite": "6.3.5",
+    "vitest": "3.2.4",
+    "typescript": "5.8.3",
+    "@vitejs/plugin-react": "4.5.0",
+    "@testing-library/react": "16.3.2",
+    "@testing-library/jest-dom": "7.0.1",
+    "jsdom": "29.1.1",
+    "registry": "registry.npmmirror.com",
+    "note": "钉版抄 harness-starter package.json；前端以 package-lock.json 实际解析版本为准，构建后与本表核对"
+  },
+  "notes": "升级任何依赖前先改这里与 backend/pyproject.toml 同 commit；pytest 无 Key 无网无 Docker 全绿。后端钉版取本机已验证解析版本（与 agent 家族三兄弟仓同环境同版；计划所指 output/text-adventure-rpg/version-lock.json 实际不存在于盘，其 pyproject 只有 >= 宽区间，故按环境实装版本钉死）。前端 react 记 19.1.0 系 harness-starter 实际主版本（计划文本写 React 18 与 harness-starter 实况不符，以「与 harness-starter 同版」为准）。"
+}

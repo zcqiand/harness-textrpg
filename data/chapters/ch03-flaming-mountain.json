@@ -1,0 +1,88 @@
+{
+  "id": "ch03",
+  "title": "第三回 火焰山",
+  "entry_locks": ["lock_ch03_entry"],
+  "locks": [
+    {
+      "id": "lock_ch03_entry",
+      "requires": [{"flag": "chapter_ch02_complete"}],
+      "denial": "第二回未了：白虎岭妖缘未断，火焰山的八百里火海还轮不到你。"
+    },
+    {
+      "id": "lock_ch03_fan_request",
+      "requires": [{"flag": "tang_convinced"}],
+      "denial": "师父未曾信你，三打之嫌尚在心头，如何肯放你只身前去翠云山借扇？"
+    },
+    {
+      "id": "lock_ch03_smart_fan",
+      "requires": [{"flag": "tang_convinced"}, {"attr": "insight", "op": ">=", "value": 3}],
+      "denial": "悟性未足，机变不来，罗刹女闭门不纳，宝扇岂肯轻假于人。"
+    },
+    {
+      "id": "lock_ch03_discern_fan",
+      "requires": [{"attr": "insight", "op": ">=", "value": 4}],
+      "denial": "悟性未到，真伪莫辨：这柄扇子是真是假，你心里没底。"
+    },
+    {
+      "id": "lock_ch03_fan_gate",
+      "requires": [{"item": "banana_leaf_fan"}],
+      "denial": "手中无芭蕉扇，八百里火焰如何过得去？先向罗刹女借扇来。"
+    }
+  ],
+  "scenes": [
+    {
+      "id": "s03_approach",
+      "text": "西去数月，热浪扑面如焚。前方一条山脉横亘天际，山头烈焰腾腾，红云乱卷——正是八百里火焰山，寸草不生，铜脑盖也化成汁。土地公言道：欲过此山，须向翠云山芭蕉洞铁扇公主罗刹女借那柄芭蕉宝扇，一扇息火，二扇生风，三扇下雨，方可行得。",
+      "choices": [
+        {"id": "c_to_cave", "text": "辞别师徒，径往翠云山芭蕉洞借扇", "goto": "s03_cave_door"}
+      ]
+    },
+    {
+      "id": "s03_cave_door",
+      "text": "芭蕉洞前，悟空整一整直裰，叫门借扇。洞门开处，铁扇公主携两柄芭蕉扇而出——闻得「悟空」二字，柳眉倒竖：当年你坑害我儿红孩儿，送到观音处做了童子，母子不得相见！新仇旧恨一齐涌上，这一柄扇，是借是夺，只在当下。",
+      "choices": [
+        {"id": "c_request", "text": "陪笑脸好言相求，诉说取经大义", "lock": "lock_ch03_fan_request", "goto": "s03_plea"},
+        {"id": "c_snatch", "text": "不与多言，索性强抢了宝扇便走", "goto": "s03_snatch"}
+      ]
+    },
+    {
+      "id": "s03_plea",
+      "text": "罗刹女怒气不消，喝令梅香闭门。悟空却道：嫂嫂莫要性起，令郎如今在菩萨座下做了善财童子，得了正果，不生不灭，不垢不净，与天地同寿——这才是好处，何反怪我？一番言语有理有据，只待罗刹女回心转意。",
+      "choices": [
+        {"id": "c_appeal", "text": "细说红孩儿得成正果，晓之以理", "lock": "lock_ch03_smart_fan", "effects": [{"item_add": "banana_leaf_fan"}], "goto": "s03_pass_gate"}
+      ]
+    },
+    {
+      "id": "s03_snatch",
+      "text": "悟空不容分说，掣出金箍棒与罗刹女斗作一团。罗刹女敌他不过，取出一柄扇子望悟空一扇——悟空竟是风中不动的磐石，罗刹女大惊，闭门而入。悟空趁乱破门，从她口中夺了扇子便走，只是仓促之间，也难辨这柄是真是假。",
+      "choices": [
+        {"id": "c_grab_forced", "text": "趁乱破门，夺扇便走", "effects": [{"item_add": "banana_leaf_fan"}, {"flag": "suspect_fake"}], "goto": "s03_pass_gate"}
+      ]
+    },
+    {
+      "id": "s03_pass_gate",
+      "text": "火焰山前，热浪灼天。悟空展开扇子掂了掂：是真是假，是一息火还是一助燃，须得心中有数——扇错了，火借风势，师徒俱成焦炭。而山高路远，扇若在手，也可挥扇径试。",
+      "choices": [
+        {"id": "c_discern", "text": "凝神细察，先辨扇之真伪", "lock": "lock_ch03_discern_fan", "effects": [{"flag": "true_fan"}]},
+        {"id": "c_cross", "text": "不再迟疑，挥扇过山", "lock": "lock_ch03_fan_gate", "effects": [{"flag": "crossed_mountain"}], "goto": "s03_summit"}
+      ]
+    },
+    {
+      "id": "s03_summit",
+      "text": "一扇挥处，火焰平息；二扇清风顿起；三扇细雨蒙蒙。八百里火焰山化作清凉谷道，师徒牵马徐行，西去大路自此洞然——火焰山一过，取经之路已行了小半。",
+      "choices": []
+    }
+  ],
+  "endings": [
+    {
+      "id": "true_form",
+      "title": "现形归真",
+      "requires": [{"flag": "bone_spirit_exposed"}, {"flag": "true_fan"}]
+    },
+    {
+      "id": "west_won",
+      "title": "借扇西行",
+      "requires": [{"flag": "crossed_mountain"}]
+    }
+  ]
+}

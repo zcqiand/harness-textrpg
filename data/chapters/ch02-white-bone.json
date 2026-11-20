@@ -1,0 +1,81 @@
+{
+  "id": "ch02",
+  "title": "第二回 三打白骨精",
+  "entry_locks": ["lock_ch02_entry"],
+  "locks": [
+    {
+      "id": "lock_ch02_entry",
+      "requires": [{"flag": "chapter_ch01_complete"}],
+      "denial": "第一回未了：两界山前尘缘未了结，白虎岭的妖气还轮不到你。"
+    },
+    {
+      "id": "lock_ch02_second_strike",
+      "requires": [{"flag": "white_bone_evidence_1"}],
+      "denial": "初见时未曾细观其行，妖形未识，此刻出手打的是寻常人家。"
+    },
+    {
+      "id": "lock_ch02_third_strike",
+      "requires": [{"flag": "white_bone_evidence_2"}],
+      "denial": "未经二验，白骨之形未验明，此刻棒落打的是贫苦老妇。"
+    },
+    {
+      "id": "lock_ch02_report_tang",
+      "requires": [{"attr": "insight", "op": ">=", "value": 3}],
+      "denial": "悟性未足，说不破妖精的障眼伎俩，唐僧只信肉眼，反怪你滥杀无辜。"
+    }
+  ],
+  "scenes": [
+    {
+      "id": "s02_first_meet",
+      "text": "白虎岭上，一村姑提着青砂罐儿迎面而来，笑吟吟说是特来斋僧。八戒闻香便喜，唐僧也欲受用。悟空火眼金睛一照，罐中哪里是斋饭，分明是长蛆的癞蛤蟆，那村姑周身妖气绕体三尺——正是白骨夫人第一变，要取唐僧元阳。悟空暗掣金箍棒在手，且看这一棒落是不落。",
+      "choices": [
+        {"id": "c_observe", "text": "按棒不动，先暗察来人真形", "effects": [{"flag": "white_bone_evidence_1"}, {"attr": {"insight": 1}}], "goto": "s02_after_first"},
+        {"id": "c_strike_1", "text": "不由分说，一棒打将过去", "effects": [{"flag": "struck_first"}], "goto": "s02_after_first"}
+      ]
+    },
+    {
+      "id": "s02_after_first",
+      "text": "若一棒打下，那村姑应声而倒，罐中蛙蛤现形，一缕妖烟遁去，留下个假尸首。唐僧面皮转青，八戒在旁挑唆：师兄的棒又不知打杀了谁家眷属。若是按棒细观，妖形已记在心间，静待她再变。",
+      "choices": [
+        {"id": "c_move_on", "text": "扶师父上马，继续西行", "goto": "s02_second_meet"}
+      ]
+    },
+    {
+      "id": "s02_second_meet",
+      "text": "山坳里又转出一个八旬老妪，拄着弯头竹杖，一步一声地哭着寻女儿。风过处，妖气比前更紧三分——分明还是那白骨夫人，第二次凑近唐僧。",
+      "choices": [
+        {"id": "c_verify", "text": "不忙动手，再验一次真假", "effects": [{"flag": "white_bone_evidence_2"}], "goto": "s02_after_second"},
+        {"id": "c_strike_2", "text": "认准妖身，劈头就打", "lock": "lock_ch02_second_strike", "goto": "s02_after_second"}
+      ]
+    },
+    {
+      "id": "s02_after_second",
+      "text": "这一变也应棒而消，坡下恰露出一堆粉骷髅，脊梁上白字森然：白骨夫人。悟空指与师父看，唐僧半信半疑；八戒却在旁撺掇：分明是师兄闯祸，使个遮眼法哄你哩。三藏耳软，信了这挑唆之言，只待第三变。",
+      "choices": [
+        {"id": "c_report", "text": "指骷髅为证，向师父细说妖情", "lock": "lock_ch02_report_tang", "effects": [{"flag": "tang_convinced"}], "goto": "s02_third_meet"},
+        {"id": "c_proceed", "text": "不多分辩，护着师父前行", "goto": "s02_third_meet"}
+      ]
+    },
+    {
+      "id": "s02_third_meet",
+      "text": "须臾，一个白须老翁拄杖而来，途中念佛，径往师徒跟前。悟空认得：又是那妖！此乃第三变，来赚唐僧的元阳。妖已三戏，事不过三，这一棒便是定夺。",
+      "choices": [
+        {"id": "c_strike_3", "text": "证据在手，一棒断其元神", "lock": "lock_ch02_third_strike", "effects": [{"flag": "bone_spirit_exposed"}, {"flag": "chapter_ch02_complete"}], "goto": "s03_approach"},
+        {"id": "c_force_strike", "text": "不容分说，先下手为强", "effects": [{"flag": "struck_without_evidence"}], "goto": "s02_exposed"}
+      ]
+    },
+    {
+      "id": "s02_exposed",
+      "text": "棒起处老翁倒在尘埃，妖雾散尽，却无一具骷髅为证。唐僧大怒，念动紧箍咒，一纸贬书逐你回花果山。拜别师父时，悟空眼圈通红——三打白骨精，打在妖身，痛在师徒。",
+      "choices": []
+    }
+  ],
+  "endings": [
+    {
+      "id": "banished_early",
+      "title": "被逐早终",
+      "requires": [{"flag": "struck_without_evidence"}],
+      "mid_chapter": true
+    }
+  ]
+}
