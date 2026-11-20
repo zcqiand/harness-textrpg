@@ -1,0 +1,127 @@
+name: CI
+
+# harness-textrpg（书三第 7 案例仓：西游记章回文字冒险 RPG——剧情分支锁）
+#
+# test job：pytest（后端全量）+ Node 24 vitest + npm run build（tsc strict + vite）。
+# deploy job 是 agent 家族部署链（docs/families/agent.md，2026-11-20 起 5313/5413）：
+# harness 家族首个 web+api 双容器仓。tag push → 双镜像
+# zcqiand/harness-textrpg-api + zcqiand/harness-textrpg-web（latest + tag 双份）
+# → VPS deploy/harness-textrpg.sh：env-file 自举（仅 APP_PORT 一个键）
+# + 渲染 vhost（htextrpg.xiangru.uk，cert 归一化 sed 规则排在 <domain> 之前——家族纪律）
+# + 起双容器 + /api/health 与 web / 各探 120s。
+# 无 LLM_API_KEY、无数据卷（sessions 在内存）。
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Tests (pytest + vitest + tsc)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+
+      - name: Install backend with dev extras
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e "./backend[dev]"
+
+      - name: Run pytest
+        run: pytest -v
+
+      - name: Set up Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies (npm ci，npm 走 npmmirror)
+        working-directory: frontend
+        run: npm ci --registry=https://registry.npmmirror.com --no-audit --no-fund
+
+      - name: Run vitest
+        working-directory: frontend
+        run: npm test
+
+      - name: Build (tsc + vite，类型错误即红)
+        working-directory: frontend
+        run: npm run build
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [test]
+    if: startsWith(github.ref, 'refs/tags/')
+    concurrency:
+      group: deploy-${{ github.event.repository.name }}-${{ github.ref }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push API image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/${{ github.event.repository.name }}-api:latest
+            ${{ secrets.DOCKER_USERNAME }}/${{ github.event.repository.name }}-api:${{ github.ref_name }}
+
+      - name: Build and push Web image
+        uses: docker/build-push-action@v6
+        with:
+          context: frontend
+          file: frontend/Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/${{ github.event.repository.name }}-web:latest
+            ${{ secrets.DOCKER_USERNAME }}/${{ github.event.repository.name }}-web:${{ github.ref_name }}
+
+      - name: Pull images and restart containers on VPS
+        uses: appleboy/ssh-action@v1
+        # appleboy/ssh-action@v1 的 ${{ secrets.* }} 不会自动进 SSH 远端 shell;
+        # step env 注入 Actions env, with.envs 列出要转发的名字（逗号分隔）。
+        # 本仓无 secret 依赖（无 LLM_API_KEY、无数据卷）：仅转发可选 vhost 变量
+        # （缺省走脚本内置值）。
+        env:
+          NGINX_DOMAIN: ${{ vars.NGINX_DOMAIN }}
+          NGINX_CERT_BASENAME: ${{ vars.NGINX_CERT_BASENAME }}
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          envs: NGINX_DOMAIN,NGINX_CERT_BASENAME
+          script: |
+            # 自举: 首次部署无 /home/deploy/<repo>/ 时自动建 + 拉 deploy 脚本
+            set -e
+            REPO="${{ github.event.repository.name }}"
+            DEPLOY_DIR="/home/deploy/$REPO"
+            mkdir -p "$DEPLOY_DIR"
+            cd "$DEPLOY_DIR"
+            # 总是重拉最新 deploy 脚本（脚本 bug fix 立即生效）；nginx 模板由脚本自拉
+            curl -fsSL "https://raw.githubusercontent.com/zcqiand/${REPO}/refs/heads/main/deploy/${REPO}.sh" -o "$REPO.sh"
+            chmod +x "$REPO.sh"
+            sh "$REPO.sh" "${{ secrets.DOCKER_USERNAME }}" "${{ secrets.DOCKER_PASSWORD }}" "${{ github.ref_name }}"
+            # 家族探活契约：/api/health {"ok":true,...} + web / 200
+            # （deploy 脚本内已 wget 探 120s，此处再显式断言一次）
+            curl -fsS http://127.0.0.1:5413/api/health | grep -q '"ok":true'
+            curl -fsS http://127.0.0.1:5313/ >/dev/null
