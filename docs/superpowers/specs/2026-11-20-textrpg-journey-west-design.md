@@ -73,32 +73,59 @@ harness-textrpg/
 
 ### 5.1 锁契约（突出点核心）
 
-锁条件三类，可组合（全部 AND）：
+**状态与初始值（数据驱动，不硬编码）**：玩家初始属性与初始背包定义在 `data/game-start.json`（`{attributes: {insight: 1, ...}, backpack: []}`），建局时加载——改 JSON 即改开局，与章回包同受「数据驱动实证」覆盖。
+
+**锁条件三类，可组合（全部 AND）**：
 
 - `flag`：旗标布尔（如 `white_bone_evidence_1`）
-- `attr`：属性阈值（如 `wukong.insight >= 3`，insight=悟性）
+- `attr`：属性阈值（如 `insight >= 3`，insight=悟性）
 - `item`：背包持有（如 `banana_leaf_fan`）
+
+**效果四类**（抉择通过后的状态变更，`effects` 数组顺序执行）：
+
+- `{"flag": "bone_spirit_exposed"}` 写旗标
+- `{"attr": {"insight": 1}}` 属性增量（负数即减）
+- `{"item_add": "dry_rations"}` 入背包
+- `{"item_remove": "banana_leaf_fan"}` 出背包
+
+**引用方向（单箭头，裁定）**：**抉择侧挂锁**——`choice.lock = "<lock_id>"`；锁定义只声明 `requires/denial/effects`，不反向指向抉择。一把锁可被多个抉择复用。
 
 ```jsonc
 // data/chapters/ch02-white-bone.json 片段（示意 schema，非最终文案）
 {
   "id": "ch02", "title": "第二回·三打白骨精",
+  "entry_locks": ["lock_ch02_entry"],           // 章回级进入条件（回完成旗标由抉择显式写入）
   "locks": [
     {
       "id": "lock_ch02_third_strike",
       "requires": [{"flag": "white_bone_evidence_2"}],
-      "gate": {"choice": "strike_third"},
       "denial": "没有二验的证据，这一棒下去师父只会信妖怪的哭声。",
-      "on_open": {"flag": "bone_spirit_exposed"}
+      "effects": [{"flag": "bone_spirit_exposed"}]
     }
+  ],
+  "scenes": [
+    {
+      "id": "s03", "text": "……",
+      "choices": [
+        {"id": "strike_third", "text": "当头第三棒", "lock": "lock_ch02_third_strike",
+         "effects": [{"attr": {"insight": 1}}]},
+        {"id": "verify_twice", "text": "再验一次", "effects": [{"flag": "white_bone_evidence_2"}]}
+      ]
+    }
+  ],
+  "endings": [
+    {"id": "banished_early", "title": "被逐早终",
+     "requires": [{"flag": "struck_without_evidence"}], "mid_chapter": true}
   ]
 }
 ```
 
-**锁注册表双向自审**（`locks.py` 启动自检，errors 阻断、warnings 放行——同书一 validators 形状）：
-1. 章回包里引用的每个 `lock id` 都在注册表中存在（无悬空引用）。
-2. 注册表中每把锁都有至少一条**双向断言锚**：测试集里存在「满足 requires → gate 放行」与「不满足 → 拒绝且 denial 可读」两条用例，锚点写死在 `tests/lock_assertions.py` 的清单里。
-3. 每把锁的 `denial` 非空（玩家必须读得懂缺什么）。
+**章回完成是显式数据**：某抉择的 `effects` 写 `{"flag": "chapter_XX_complete"}` 才算完成该回，引擎不做隐式推进；下一回 `entry_locks` 引用该旗标（章回级门控同锁机制）。
+
+**锁注册表双向自审**（注册表 = 全部章回包 `locks` 数组的并集，无独立 locks.json；`locks.py` 启动自检，errors 阻断、warnings 放行——同书一 validators 形状）：
+1. **生产启动自检**：抉择引用的每个 `lock id` 都在注册表中存在（无悬空引用）；每把锁 `denial` 非空（玩家必须读得懂缺什么）；每把锁在锚表中有条目。
+2. **锚表**（`text_rpg/lock_anchors.py`，包内数据，生产自检与 pytest 共读）：`lock_id → [test 文件名, 放行用例名, 拒绝用例名]`。
+3. **pytest 侧核锚**：锚表中每个用例名在测试集里真实存在且双向各有一条（满足 requires → 放行；不满足 → 拒绝且 denial 可读）——生产代码不读 tests 目录，依赖方向是 pytest 读锚表。
 
 ### 5.2 本批章回内容（3 回，约 18 场景，12 把锁，4 结局）
 
@@ -106,17 +133,17 @@ harness-textrpg/
 - **回2·三打白骨精**：三段抉择（打/拦/验），每次选择写证据旗标；无二验证据强打第三下 → 触发「被逐」早终结局；集齐三证 → 白骨现形（跨回锁种子：`bone_spirit_exposed`）。
 - **回3·火焰山**：背包锁 `banana_leaf_fan`（芭蕉扇）；借扇抉择：硬抢（丢旗标 `respect`）或智取（需回 1/回 2 旗标组合）→ 真/假扇两条线汇入不同结局。
 
-**结局 4 态**：现形归真（全证全德）/ 借扇西行（智取线）/ 被逐早终（强打线）/ 半途折返（回1不救樵夫连锁）。
+**结局 4 态**：现形归真（全证全德）/ 借扇西行（智取线）/ 被逐早终（强打线）/ 半途折返（回1不救樵夫连锁）。**结局与锁同机制**：结局注册在章回包 `endings` 数组，`requires` 条件同锁；引擎每次抉择结算后判定，`mid_chapter: true` 允许章中途触发（被逐/折返都是中途局）。「走过的结局」是跨局进度，落前端 localStorage（重启不清）；**未达结局在结局图上显示缺失条件链**——这是锁证据链在 UI 的二次收口，剧透是接受的代价（家族重证据轻悬念）。
 
 ### 5.3 API 面
 
 | 端点 | 语义 |
 |---|---|
 | `GET /api/health` | `{"ok":true,"mode":"local"}`（家族探活契约同款） |
-| `GET /api/chapters` | 章回目录（id/title/锁定状态摘要） |
+| `GET /api/chapters` | 章回**静态目录**（id/title/序，无局上下文，**不携带锁定状态**） |
 | `POST /api/games` | 建局（`{player_name}`）→ 201 `{id, state}` |
 | `POST /api/games/{id}/choice` | 提交抉择 `{scene_id, choice_id}` → `{messages, state, unlocked_locks, game_over, ending?}` |
-| `GET /api/games/{id}` | 读局（含旗标/属性/背包/已解锁锁清单） |
+| `GET /api/games/{id}` | 读局：旗标/属性/背包/已解锁锁清单 + 当前场景逐 choice 锁评估 `{locked, missing:[{type,key,have,need}], denial}` + 4 结局条件链摘要（已满足/缺失）——**锁评估只在后端求值一次**，前端零复算 |
 
 无 LLM、无 secret：env 契约只有 `APP_PORT`（fail-fast 必填，禁兜底默认）。
 
