@@ -3,7 +3,7 @@
 import json
 
 import pytest
-from text_rpg.chapters import load_world
+from text_rpg.chapters import EndingDef, load_world
 
 
 def test_load_start_state(tmp_path):
@@ -104,10 +104,17 @@ def test_chapter_pack_maps_to_dataclasses(tmp_path):
     assert c1.lock == "gate2" and c1.goto == "s2" and c1.effects == []
     assert c2.lock is None and c2.goto is None
     assert c2.effects == [{"type": "flag", "name": "detour"}]
-    # EndingDef：chapter_id=父章 id（装载期填，非计算）；mid_chapter 缺省 False
+    # EndingDef 契约形状：(id, title, requires, mid_chapter)，无 chapter_id 字段；
+    # mid_chapter 缺省 False
     e1, e2 = ch02.endings
-    assert e1.chapter_id == "ch02" and e1.mid_chapter is False
+    assert e1.mid_chapter is False
     assert e2.mid_chapter is True
+
+
+def test_ending_def_contract_shape_positional():
+    # 计划核心签名：EndingDef(id, title, requires, mid_chapter) 位置构造必须成立
+    e = EndingDef("e1", "结局", [{"type": "flag", "name": "f"}], False)
+    assert e.id == "e1" and e.title == "结局" and e.mid_chapter is False
 
 
 def test_bad_game_start_json_names_file(tmp_path):

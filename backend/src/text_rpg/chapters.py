@@ -43,7 +43,6 @@ class LockDef:
 @dataclass
 class EndingDef:
     id: str
-    chapter_id: str
     title: str
     requires: list[dict]
     mid_chapter: bool = False
@@ -131,7 +130,6 @@ def _load_chapter(path: Path) -> Chapter:
     endings = [
         EndingDef(
             id=e["id"],
-            chapter_id=chapter_id,
             title=e["title"],
             requires=list(e["requires"]),
             mid_chapter=bool(e.get("mid_chapter", False)),
