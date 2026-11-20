@@ -15,6 +15,7 @@ from text_rpg.chapters import load_world
 from text_rpg.engine import GameEngine
 from text_rpg.lock_anchors import ANCHORS
 from text_rpg.locks import audit, build_registry
+from text_rpg.npcs import audit_npcs, load_npcs
 from text_rpg.persistence import SessionStore
 from text_rpg.routes import build_router
 
@@ -25,9 +26,15 @@ def _data_dir() -> Path:
     return Path(__file__).resolve().parents[3] / "data"
 
 
-def _audit_gate(world, registry, anchors) -> None:
-    """启动自审闸：errors 非空 → 拒绝启动（spec §5.1）。"""
+def _audit_gate(world, registry, anchors, npcs=None) -> None:
+    """启动自审闸：errors 非空 → 拒绝启动（spec §5.1）。
+
+    NPC 契约审计与锁审计并账：NPC errors 并入同一闸（spec §5.2 挂进同一路径）。
+    npcs=None 时跳过 NPC 面（v1 三参调用形状保持兼容）。
+    """
     report = audit(world, registry, anchors)
+    if npcs is not None:
+        report.errors.extend(audit_npcs(npcs, world).errors)
     if report.errors:
         raise RuntimeError("启动自审未通过，拒绝启动：\n- " + "\n- ".join(report.errors))
 
@@ -35,7 +42,8 @@ def _audit_gate(world, registry, anchors) -> None:
 def create_app() -> FastAPI:
     world = load_world(_data_dir())
     registry = build_registry(world)
-    _audit_gate(world, registry, ANCHORS)
+    npcs = load_npcs(data_dir=_data_dir())
+    _audit_gate(world, registry, ANCHORS, npcs)
     engine = GameEngine(world, registry)
     application = FastAPI(title="harness-textrpg")
     application.include_router(build_router(engine, SessionStore()))

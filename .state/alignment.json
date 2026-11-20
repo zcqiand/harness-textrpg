@@ -2,11 +2,11 @@
   "schema": 1,
   "project": "harness-textrpg",
   "functions": {
-    "modules": 4,
-    "features": 9,
-    "items": 22
+    "modules": 5,
+    "features": 17,
+    "items": 43
   },
-  "warnings_total": 66,
+  "warnings_total": 79,
   "warnings": {
     "已上线但无设计映射": [
       "M01.F01.I01",
@@ -79,6 +79,23 @@
       "M03.F03.I02",
       "M04.F01.I01",
       "M04.F01.I02"
+    ],
+    "开发中但无需求文档引用": [
+      "M01.F02.I01",
+      "M01.F02.I02",
+      "M01.F02.I03",
+      "M02.F05.I01",
+      "M02.F05.I02",
+      "M02.F05.I03",
+      "M02.F05.I04",
+      "M02.F05.I05",
+      "M03.F04.I01",
+      "M03.F04.I02",
+      "M04.F02.I01"
+    ],
+    "开发中但代码里无 UI 入口(用户还点不到)": [
+      "M03.F04.I01",
+      "M03.F04.I02"
     ]
   },
   "unreachable_shipped": [],
@@ -136,6 +153,36 @@
     "M01.F01.I06": {
       "name": "错误形状收敛",
       "status": "已上线",
+      "type": "接口",
+      "requirements": [],
+      "flows": [],
+      "designs": [],
+      "tests": [],
+      "entry": []
+    },
+    "M01.F02.I01": {
+      "name": "NPC 对话端点",
+      "status": "开发中",
+      "type": "接口",
+      "requirements": [],
+      "flows": [],
+      "designs": [],
+      "tests": [],
+      "entry": []
+    },
+    "M01.F02.I02": {
+      "name": "NPC 记忆端点",
+      "status": "开发中",
+      "type": "接口",
+      "requirements": [],
+      "flows": [],
+      "designs": [],
+      "tests": [],
+      "entry": []
+    },
+    "M01.F02.I03": {
+      "name": "NPC 对话错误形状收敛",
+      "status": "开发中",
       "type": "接口",
       "requirements": [],
       "flows": [],
@@ -206,6 +253,116 @@
     "M02.F04.I01": {
       "name": "内存会话存取",
       "status": "已上线",
+      "type": "接口",
+      "requirements": [],
+      "flows": [],
+      "designs": [],
+      "tests": [],
+      "entry": []
+    },
+    "M02.F05.I01": {
+      "name": "人设契约加载与启动自审",
+      "status": "开发中",
+      "type": "接口",
+      "requirements": [],
+      "flows": [],
+      "designs": [],
+      "tests": [],
+      "entry": []
+    },
+    "M02.F05.I02": {
+      "name": "对话记忆存取",
+      "status": "开发中",
+      "type": "接口",
+      "requirements": [],
+      "flows": [],
+      "designs": [],
+      "tests": [],
+      "entry": []
+    },
+    "M02.F05.I03": {
+      "name": "双层幻觉护栏",
+      "status": "开发中",
+      "type": "接口",
+      "requirements": [],
+      "flows": [],
+      "designs": [],
+      "tests": [],
+      "entry": []
+    },
+    "M02.F05.I04": {
+      "name": "LLM 桥接层",
+      "status": "开发中",
+      "type": "接口",
+      "requirements": [],
+      "flows": [],
+      "designs": [],
+      "tests": [],
+      "entry": []
+    },
+    "M02.F05.I05": {
+      "name": "护栏证据记录与锚表",
+      "status": "开发中",
+      "type": "接口",
+      "requirements": [],
+      "flows": [],
+      "designs": [],
+      "tests": [],
+      "entry": []
+    },
+    "M02.F06.I01": {
+      "name": "对手卡加载与自审",
+      "status": "规划",
+      "type": "接口",
+      "requirements": [],
+      "flows": [],
+      "designs": [],
+      "tests": [],
+      "entry": []
+    },
+    "M02.F06.I02": {
+      "name": "对抗结算",
+      "status": "规划",
+      "type": "接口",
+      "requirements": [],
+      "flows": [],
+      "designs": [],
+      "tests": [],
+      "entry": []
+    },
+    "M02.F06.I03": {
+      "name": "结算账本重放",
+      "status": "规划",
+      "type": "接口",
+      "requirements": [],
+      "flows": [],
+      "designs": [],
+      "tests": [],
+      "entry": []
+    },
+    "M02.F07.I01": {
+      "name": "奇遇模板与难度规约",
+      "status": "规划",
+      "type": "接口",
+      "requirements": [],
+      "flows": [],
+      "designs": [],
+      "tests": [],
+      "entry": []
+    },
+    "M02.F07.I02": {
+      "name": "种子化生成器与无效过滤",
+      "status": "规划",
+      "type": "接口",
+      "requirements": [],
+      "flows": [],
+      "designs": [],
+      "tests": [],
+      "entry": []
+    },
+    "M02.F07.I03": {
+      "name": "奇遇准入通道",
+      "status": "规划",
       "type": "接口",
       "requirements": [],
       "flows": [],
@@ -297,6 +454,26 @@
         "frontend/src/views/EndingView.tsx"
       ]
     },
+    "M03.F04.I01": {
+      "name": "对话屏页面",
+      "status": "开发中",
+      "type": "页面",
+      "requirements": [],
+      "flows": [],
+      "designs": [],
+      "tests": [],
+      "entry": []
+    },
+    "M03.F04.I02": {
+      "name": "护栏拦截提示",
+      "status": "开发中",
+      "type": "页面",
+      "requirements": [],
+      "flows": [],
+      "designs": [],
+      "tests": [],
+      "entry": []
+    },
     "M04.F01.I01": {
       "name": "开局配置",
       "status": "已上线",
@@ -310,6 +487,56 @@
     "M04.F01.I02": {
       "name": "章回包集",
       "status": "已上线",
+      "type": "接口",
+      "requirements": [],
+      "flows": [],
+      "designs": [],
+      "tests": [],
+      "entry": []
+    },
+    "M04.F02.I01": {
+      "name": "人设契约集",
+      "status": "开发中",
+      "type": "接口",
+      "requirements": [],
+      "flows": [],
+      "designs": [],
+      "tests": [],
+      "entry": []
+    },
+    "M04.F03.I01": {
+      "name": "对手卡集",
+      "status": "规划",
+      "type": "接口",
+      "requirements": [],
+      "flows": [],
+      "designs": [],
+      "tests": [],
+      "entry": []
+    },
+    "M04.F03.I02": {
+      "name": "奇遇模板集",
+      "status": "规划",
+      "type": "接口",
+      "requirements": [],
+      "flows": [],
+      "designs": [],
+      "tests": [],
+      "entry": []
+    },
+    "M05.F01.I01": {
+      "name": "全链路验收脚本",
+      "status": "规划",
+      "type": "接口",
+      "requirements": [],
+      "flows": [],
+      "designs": [],
+      "tests": [],
+      "entry": []
+    },
+    "M05.F01.I02": {
+      "name": "证据回执",
+      "status": "规划",
       "type": "接口",
       "requirements": [],
       "flows": [],
