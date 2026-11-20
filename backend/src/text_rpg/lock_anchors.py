@@ -41,4 +41,24 @@ ANCHORS: dict = {
         "pass": "test_lock_pass[lock_ch02_report_tang]",
         "deny": "test_lock_deny[lock_ch02_report_tang]",
     },
+    "lock_ch03_entry": {
+        "pass": "test_lock_pass[lock_ch03_entry]",
+        "deny": "test_lock_deny[lock_ch03_entry]",
+    },
+    "lock_ch03_fan_request": {
+        "pass": "test_lock_pass[lock_ch03_fan_request]",
+        "deny": "test_lock_deny[lock_ch03_fan_request]",
+    },
+    "lock_ch03_smart_fan": {
+        "pass": "test_lock_pass[lock_ch03_smart_fan]",
+        "deny": "test_lock_deny[lock_ch03_smart_fan]",
+    },
+    "lock_ch03_discern_fan": {
+        "pass": "test_lock_pass[lock_ch03_discern_fan]",
+        "deny": "test_lock_deny[lock_ch03_discern_fan]",
+    },
+    "lock_ch03_fan_gate": {
+        "pass": "test_lock_pass[lock_ch03_fan_gate]",
+        "deny": "test_lock_deny[lock_ch03_fan_gate]",
+    },
 }
