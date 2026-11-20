@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "text-rpg"
+version = "0.1.0"
+description = "书三第 7 案例仓 harness-textrpg：西游记章回文字冒险 RPG（突出点=剧情分支锁）"
+requires-python = ">=3.11"
+# 依赖钉版与仓根 version-lock.json 一致（改版须两处同 commit）。
+dependencies = [
+    "fastapi==0.141.1",
+    "uvicorn==0.54.0",
+    "pydantic==2.12.5",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==9.1.1",
+    "httpx==0.28.1",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
