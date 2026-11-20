@@ -6,5 +6,5 @@
   "red_lines": ["自称神明", "许诺长生", "索命"],
   "outside": ["手机", "汽车", "互联网"],
   "inside": ["火焰山", "翠云山", "芭蕉洞"],
-  "memory_spec": {"window": 10, "event_tags": ["insulted", "gifted", "promised"]}
+  "memory_spec": {"window": 10, "event_tags": {"insulted": ["骂", "泼猴", "滚"], "gifted": ["送", "赠"], "promised": ["答应", "约定"]}}
 }

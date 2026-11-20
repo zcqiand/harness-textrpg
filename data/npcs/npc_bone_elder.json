@@ -20,10 +20,10 @@
   ],
   "memory_spec": {
     "window": 10,
-    "event_tags": [
-      "insulted",
-      "gifted",
-      "promised"
-    ]
+    "event_tags": {
+      "insulted": ["骂", "畜生", "作孽"],
+      "gifted": ["送", "斋饭"],
+      "promised": ["答应", "约定"]
+    }
   }
 }
