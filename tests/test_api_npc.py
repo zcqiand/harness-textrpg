@@ -15,6 +15,7 @@ from fastapi.testclient import TestClient
 from text_rpg.chapters import Chapter, Choice, EndingDef, Scene, World, load_world
 from text_rpg.engine import GameEngine
 from text_rpg.llm import MockLLMClient
+from text_rpg.lock_anchors import ANCHORS
 from text_rpg.locks import build_registry
 from text_rpg.memory import MemoryStore
 from text_rpg.npcs import NpcDef, audit_npcs, load_npcs
@@ -79,7 +80,8 @@ def make_client(
 ) -> tuple[TestClient, MemoryStore]:
     """内存小世界 + 注入面装配 app（不依赖真实 data/）。"""
     world = make_world()
-    engine = GameEngine(world, build_registry(world))
+    registry = build_registry(world)
+    engine = GameEngine(world, registry)
     npcs = [npc or make_npc()]
     memory = MemoryStore(npcs)
     llm = llm_client if llm_client is not None else MockLLMClient()
@@ -93,6 +95,8 @@ def make_client(
             memory=memory,
             llm_mode=llm_mode,
             opponents=[],  # 显式空对手注册表（build_router 禁 None 兜底，T11 审查阻断 3）
+            encounters=[],  # 显式空奇遇模板注册表（T16 装配面 fail-fast 同形）
+            lock_anchors={k: {"pass": f"p:{k}", "deny": f"d:{k}"} for k in registry},
         )
     )
     return TestClient(app), memory
@@ -120,6 +124,8 @@ def make_real_client() -> tuple[TestClient, MemoryStore]:
             memory=memory,
             llm_mode="mock",
             opponents=[],  # 显式空对手注册表（build_router 禁 None 兜底，T11 审查阻断 3）
+            encounters=[],  # 显式空奇遇模板注册表（T16 装配面 fail-fast 同形）
+            lock_anchors=ANCHORS,
         )
     )
     return TestClient(app), memory

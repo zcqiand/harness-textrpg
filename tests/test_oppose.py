@@ -337,6 +337,8 @@ def _make_client() -> tuple[TestClient, object]:
             memory=MemoryStore([]),
             llm_mode="mock",
             opponents=[make_opponent()],
+            encounters=[],  # 显式空奇遇模板注册表（T16 装配面 fail-fast 同形）
+            lock_anchors={k: {"pass": f"p:{k}", "deny": f"d:{k}"} for k in build_registry(world)},
         )
     )
     return TestClient(app), None

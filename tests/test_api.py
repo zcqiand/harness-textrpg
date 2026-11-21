@@ -93,7 +93,8 @@ def make_client() -> tuple[TestClient, object]:
     from text_rpg.routes import build_router
 
     world = make_world()
-    engine = GameEngine(world, build_registry(world))
+    registry = build_registry(world)
+    engine = GameEngine(world, registry)
     store = SessionStore()
     npcs: list = []
     memory = MemoryStore(npcs)
@@ -107,6 +108,8 @@ def make_client() -> tuple[TestClient, object]:
             memory=memory,
             llm_mode="mock",
             opponents=[],  # 显式空对手注册表（build_router 禁 None 兜底，T11 审查阻断 3）
+            encounters=[],  # 显式空奇遇模板注册表（T16 装配面 fail-fast 同形）
+            lock_anchors={k: {"pass": f"p:{k}", "deny": f"d:{k}"} for k in registry},
         )
     )
     return TestClient(app), store
@@ -314,6 +317,7 @@ def test_get_game_scene_carries_real_ch01_prose():
     """read_game 场景视图面：真仓 data/ 装配，起手场景视图带 npcs。"""
     from text_rpg.chapters import load_world
     from text_rpg.llm import MockLLMClient
+    from text_rpg.lock_anchors import ANCHORS
     from text_rpg.locks import build_registry
     from text_rpg.memory import MemoryStore
     from text_rpg.npcs import load_npcs
@@ -335,6 +339,8 @@ def test_get_game_scene_carries_real_ch01_prose():
             memory=memory,
             llm_mode="mock",
             opponents=[],  # 显式空对手注册表（build_router 禁 None 兜底，T11 审查阻断 3）
+            encounters=[],  # 显式空奇遇模板注册表（T16 装配面 fail-fast 同形）
+            lock_anchors=ANCHORS,
         )
     )
     client = TestClient(app)

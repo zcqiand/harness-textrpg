@@ -1,4 +1,10 @@
-"""API 路由层：v1 五端点 + v2 NPC 对话端点，锁评估只在后端求值一次。
+"""API 路由层：v1 五端点 + v2 NPC 对话/场景读面/奇遇准入端点，锁评估只在后端求值一次。
+
+端点清单：GET /api/health、GET /api/chapters、POST /api/games、GET /api/games/{id}
+（局面+当前场景+抉择+结局+章目录）、POST /api/games/{id}/choice、POST
+/api/games/{id}/npcs/{npc_id}/talk、GET /api/games/{id}/npcs/{npc_id}/memory、
+GET /api/games/{id}/scenes/{scene_id}（任意场景读面，v1 只照当前场景）、
+POST /api/games/{id}/encounters（奇遇准入，M02.F07.I03）。
 
 序列化器放本层（JSON 边界归路由，engine 保持传输无关——设计取舍记录在案）。
 形状真源 = v1 spec §5.3 + v2/v3 design spec §5.4。错误形状：
@@ -6,6 +12,8 @@
 - 未知 scene_id / choice_id / npc_id → 400/404（engine KeyError / ValueError 收敛）
 - 终局后提交 → 400（engine ValueError「游戏已结束」）
 - NPC 端点：空输入 400、NPC 不在当前场景 400（对话入口来自场景数据）
+- 奇遇准入：客户端传种子 400、未知模板 400、生成无效/自审不过/异源撞车/终局局
+  → 400 报因（EncounterRejectedError 收敛在路由层）
 """
 # @impl M01.F01.I01
 # @impl M01.F01.I02
@@ -16,13 +24,24 @@
 # @impl M01.F02.I01
 # @impl M01.F02.I02
 # @impl M01.F02.I03
+# @impl M02.F07.I03
 
 from __future__ import annotations
+
+from typing import Any
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from text_rpg.chapters import Scene
+from text_rpg.contracts import evaluate
+from text_rpg.encounters import (
+    ADMIT_SEED_SCAN_LIMIT,
+    EncounterRejectedError,
+    EncounterTemplate,
+    admit,
+    generate_encounter,
+)
 from text_rpg.engine import GameEngine, GameState
 from text_rpg.guardrails import VERDICT_BLOCKED, Guardrails, LLMClient
 from text_rpg.memory import MemoryStore
@@ -48,6 +67,39 @@ class ChoiceBody(BaseModel):
 
 class TalkBody(BaseModel):
     text: str | None = None
+
+
+class EncounterBody(BaseModel):
+    """奇遇准入请求体：客户端只许选模板，禁传种子（服务端从局状态派生）。
+
+    seed 字段仅作「客户端传种子」检测面：任何非 None 值即 400 拒收（spec §5.6
+    硬约束）。typed Any 收任意 JSON 类型（int/str/dict 都拦得住）。
+    """
+
+    template_id: str | None = None
+    seed: Any = None
+
+
+def _encounter_seed_base(state: GameState, template_id: str) -> str:
+    """准入种子基服务端从局状态派生（客户端不传种子）：模板 id + 章景 + 属性 + 旗标。
+    同局状态 → 同种子基 → 扫描序确定性 → 生成候选全等（spec §5.6 重放硬约束）。"""
+    attrs = sorted(state.attributes.items())
+    flags = sorted(state.flags)
+    return "|".join(
+        (
+            "encounter",
+            template_id,
+            state.current_chapter,
+            state.current_scene,
+            repr(attrs),
+            repr(flags),
+        )
+    )
+
+
+def _encounter_params(template: EncounterTemplate, state: GameState) -> dict:
+    """参数槽服务端从局状态派生（确定性）：声明参数逐一取当前场景 id 词面。"""
+    return {p: str(state.current_scene) for p in template.params}
 
 
 def state_to_dict(state: GameState) -> dict:
@@ -82,6 +134,8 @@ def build_router(
     memory: MemoryStore,
     llm_mode: str,
     opponents: list[OpponentDef] | None = None,
+    encounters: list | None = None,
+    lock_anchors: dict | None = None,
 ) -> APIRouter:
     """v2 装配面：NPC 契约 + LLM client + 记忆库 + LLM_MODE 显式传入（禁 env 兜底，
     create_app 读 env 一次经参数下发）。"""
@@ -101,6 +155,13 @@ def build_router(
     if opponents is None:
         raise ValueError("opponents 必须显式传入 build_router（禁自仓惰性加载兜底）")
     _opponents_by_id: dict[str, OpponentDef] = {o.id: o for o in opponents}
+
+    # Encounter registry (M02.F07.I03): 显式传入，禁兜底（T16，oppose T11 先例同形）。
+    if encounters is None:
+        raise ValueError("encounters 必须显式传入 build_router（禁自仓惰性加载兜底）")
+    if lock_anchors is None:
+        raise ValueError("lock_anchors 必须显式传入 build_router（禁兜底）")
+    _encounters_by_id = {t.id: t for t in encounters}
 
     def _opponent(opp_id: str) -> OpponentDef | None:
         return _opponents_by_id.get(opp_id)
@@ -238,5 +299,96 @@ def build_router(
         if npc_id not in _npcs_by_id:
             raise HTTPException(status_code=404, detail=f"NPC 不存在：{npc_id}")
         return {"entries": memory.entries(game_id, npc_id)}
+
+    @router.get("/api/games/{game_id}/scenes/{scene_id}")
+    def read_scene(game_id: str, scene_id: str) -> dict:
+        """任意场景读面：并入后的临时场景 GET 局面可见（v1 read_game 只照当前场景）。
+
+        边界（T16 审查建议③注记）：场景数据挂引擎世界（进程级共享），本端点
+        「跨局可见、跨章可读」——任意局可读任意章的任意场景（含别局并入的临时
+        场景），不以 game_id 圈定可见域；锁评估行仍按本局 state 求值。"""
+        state = _load_game(game_id)
+        scene = _find_scene(scene_id)
+        if scene is None:
+            raise HTTPException(status_code=404, detail=f"场景不存在：{scene_id}")
+        rows: list[dict] = []
+        for c in scene.choices:
+            if c.lock is None:
+                rows.append(
+                    {"id": c.id, "text": c.text, "locked": False, "missing": [], "denial": None}
+                )
+                continue
+            lock_def = engine.registry[c.lock]
+            result = evaluate(lock_def.requires, state)
+            rows.append(
+                {
+                    "id": c.id,
+                    "text": c.text,
+                    "locked": not result.satisfied,
+                    "missing": result.missing,
+                    "denial": lock_def.denial if not result.satisfied else None,
+                }
+            )
+        return {
+            "scene": {
+                "id": scene.id,
+                "text": scene.text,
+                "npcs": [{"id": nid, "name": _npcs_by_id[nid].name} for nid in scene.npc_ids],
+            },
+            "choices": rows,
+        }
+
+    @router.post("/api/games/{game_id}/encounters")
+    def admit_encounter(game_id: str, body: EncounterBody) -> dict:
+        """奇遇准入端点（M02.F07.I03）：预检全在动状态之前（oppose 阻断 2 先例）。
+        种子服务端派生（客户端传种子 400）→ 生成 → 过滤拒收 400 报因 → 自审并入
+        （自审不过/异源撞车 EncounterRejectedError → 400 报因，docstring 承诺的
+        「400 报因面收敛在路由层」在此兑现，T16 审查建议①）。"""
+        state = _load_game(game_id)
+        if state.game_over:
+            # 终局守卫（T16 审查建议③）：终局局禁再并入奇遇场景
+            # （submit_choice 终局后 400「游戏已结束」同语义，oppose 终局跳过先例）。
+            raise HTTPException(status_code=400, detail="游戏已结束，禁止并入奇遇场景")
+        if not body.template_id or not body.template_id.strip():
+            raise HTTPException(status_code=400, detail="template_id 必填且不能为空白")
+        if body.seed is not None:
+            raise HTTPException(status_code=400, detail="种子由服务端从局状态派生，禁客户端传入")
+        template = _encounters_by_id.get(body.template_id)
+        if template is None:
+            raise HTTPException(status_code=400, detail=f"奇遇模板不存在：{body.template_id}")
+        params = _encounter_params(template, state)
+        base = _encounter_seed_base(state, template.id)
+        candidate = None
+        last_reason = ""
+        for offset in range(ADMIT_SEED_SCAN_LIMIT):
+            try:
+                candidate = generate_encounter(template, params, f"{base}|{offset}")
+                break
+            except EncounterRejectedError as exc:
+                last_reason = str(exc)
+                continue
+        if candidate is None:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"奇遇「{template.id}」在 {ADMIT_SEED_SCAN_LIMIT} 个派生种子内"
+                    f"无有效生成：{last_reason}"
+                ),
+            )
+        try:
+            admit(candidate, engine, state, lock_anchors)
+        except EncounterRejectedError as exc:
+            # 准入拒收（自审不过/异源撞车）→ 400 报因（T16 审查建议①：现只包了
+            # 扫描段 generate，admit 段裸抛曾表现为 500）。
+            raise HTTPException(status_code=400, detail=str(exc)) from None
+        return {
+            "template_id": template.id,
+            "name": candidate.name,
+            "scene": candidate.scene,
+            "locks": candidate.locks,
+            "effects": candidate.effects,
+            "scene_id": str(candidate.scene["id"]),
+            "lock_ids": [lk["id"] for lk in candidate.locks],
+        }
 
     return router

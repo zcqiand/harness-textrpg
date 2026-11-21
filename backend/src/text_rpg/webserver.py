@@ -12,6 +12,7 @@ import uvicorn
 from fastapi import FastAPI
 
 from text_rpg.chapters import load_world
+from text_rpg.encounters import audit_encounter_templates, load_encounter_templates
 from text_rpg.engine import GameEngine
 from text_rpg.guard_anchors import GUARD_ANCHORS, audit_guards
 from text_rpg.llm import create_client
@@ -30,13 +31,16 @@ def _data_dir() -> Path:
     return Path(__file__).resolve().parents[3] / "data"
 
 
-def _audit_gate(world, registry, anchors, npcs=None, guard_anchors=None, opponents=None) -> None:
+def _audit_gate(
+    world, registry, anchors, npcs=None, guard_anchors=None, opponents=None, encounters=None
+) -> None:
     """启动自审闸：errors 非空 → 拒绝启动（spec §5.1）。
 
     NPC 契约审计与锁审计并账：NPC errors 并入同一闸（spec §5.2 挂进同一路径）。
     npcs=None 时跳过 NPC 面（v1 三参调用形状保持兼容）。
     护栏锚核查并账（M02.F05.I05，lock_anchors 同形）：guard_anchors=None 时跳过护栏面。
     对手卡契约审计并账（M02.F06.I01，npcs 同形）：opponents=None 时跳过对手卡面。
+    奇遇模板审计并账（M02.F07.I03，T10 同形）：encounters=None 时跳过奇遇模板面。
     """
     report = audit(world, registry, anchors)
     if npcs is not None:
@@ -45,6 +49,8 @@ def _audit_gate(world, registry, anchors, npcs=None, guard_anchors=None, opponen
         report.errors.extend(audit_opponents(opponents, world).errors)
     if guard_anchors is not None:
         report.errors.extend(audit_guards(guard_anchors).errors)
+    if encounters is not None:
+        report.errors.extend(audit_encounter_templates(encounters).errors)
     if report.errors:
         raise RuntimeError("启动自审未通过，拒绝启动：\n- " + "\n- ".join(report.errors))
 
@@ -54,7 +60,8 @@ def create_app() -> FastAPI:
     registry = build_registry(world)
     npcs = load_npcs(data_dir=_data_dir())
     opponents = load_opponents(_data_dir())
-    _audit_gate(world, registry, ANCHORS, npcs, GUARD_ANCHORS, opponents)
+    encounters = load_encounter_templates(_data_dir())
+    _audit_gate(world, registry, ANCHORS, npcs, GUARD_ANCHORS, opponents, encounters)
     engine = GameEngine(world, registry)
     llm_client, llm_mode = create_client()
     application = FastAPI(title="harness-textrpg")
@@ -67,6 +74,8 @@ def create_app() -> FastAPI:
             memory=MemoryStore(npcs),
             llm_mode=llm_mode,
             opponents=opponents,
+            encounters=encounters,
+            lock_anchors=ANCHORS,
         )
     )
     return application

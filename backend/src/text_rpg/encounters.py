@@ -13,24 +13,34 @@ random.Random(seed) 实例化（禁全局 random）→ params 填充场景模板
 → 种子化实例化锁 → 无效过滤五查 → 候选奇遇（形状对齐 v1 章包）。
 锚纪律裁定（spec §5.6）：生成锁不进 lock_anchors 静态锚表——生成锁的锚由生成器派生标注，
 锚纪律由模板级双向断言承担（tests/test_encounters.py::test_template_level_bidirectional_*）。
+
+准入通道 admit（M02.F07.I03）：生成锁并入临时注册表跑 v1 audit 三查（悬空/空 denial/锚）
+→ 通过者作临时场景并入当前章（内存态，不落盘，不迁移玩家）；生成锁自带锚注记进
+自审锚表（不进静态锚表）。同候选重复准入幂等（场景/锁已登记不重挂）。异源撞车
+（T16 审查阻断）：生成 scene_id / 锁 id 已被其他来源登记且内容分歧 → 拒绝报因带 id
+（禁静默留旧版还回 200，400 报因面收敛在路由层）。
 """
 # @impl M04.F03.I02
 # @impl M02.F07.I01
+# @impl M02.F07.I03
 
 from __future__ import annotations
 
 import random
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
-from text_rpg.chapters import _read_json
+from text_rpg.chapters import Choice, LockDef, Scene, World, _read_json
 from text_rpg.locks import AuditReport
+from text_rpg.locks import audit as audit_locks
 
 __all__ = [
     "EncounterCandidate",
     "EncounterRejectedError",
     "EncounterTemplate",
+    "ADMIT_SEED_SCAN_LIMIT",
+    "admit",
     "audit_encounter_templates",
     "encounter_template_from_dict",
     "generate_encounter",
@@ -201,8 +211,9 @@ _ENCOUNTER_LOCK_BAND_MAX = 4
 
 class EncounterRejectedError(ValueError):
     """生成即自检拒收：message 即报因。拒收原因：引用悬空 / 锁槽 id 为空（缺锚）/
-    空 denial / 锁条件槽为空（入闸）/ 超锁上限 / 难度缺键（禁软兜底）/ 难度越界
-    （T16 准入通道据此回 400 报因）。"""
+    空 denial / 锁条件槽为空（入闸）/ 超锁上限 / 难度缺键（禁软兜底）/ 难度越界 /
+    准入撞车（scene_id / 锁 id 被其他来源登记且内容分歧，T16 审查阻断——准入通道
+    据此回 400 报因）。"""
 
 
 @dataclass
@@ -360,3 +371,103 @@ def generate_encounter(template: EncounterTemplate, params: dict, seed) -> Encou
     return EncounterCandidate(
         template_id=template.id, name=template.name, scene=scene, locks=locks, effects=effects
     )
+
+
+# --------------------------------------------- 奇遇准入通道（M02.F07.I03，spec §5.6）
+
+# 准入种子扫描上限：服务端从局状态派生种子基，基起逐个偏移扫描首个过五类无效过滤的
+# 种子。扫描序确定性（同局状态 → 同基 → 同选中种子 → 重放全等）；上限兜住坏模板
+# （全种子拒收时不无限循环，超限 400 报因）。
+ADMIT_SEED_SCAN_LIMIT = 64
+
+
+def _scene_from_candidate(candidate: EncounterCandidate) -> Scene:
+    """候选奇遇 scene dict → v1 Scene dataclass（choices 内层 effects 逐条复制）。"""
+    return Scene(
+        id=str(candidate.scene["id"]),
+        text=str(candidate.scene["text"]),
+        npc_ids=[str(x) for x in candidate.scene.get("npc_ids", [])],
+        choices=[
+            Choice(
+                id=str(c["id"]),
+                text=str(c["text"]),
+                lock=c.get("lock"),
+                goto=c.get("goto"),
+                effects=[dict(eff) for eff in c.get("effects", [])],
+            )
+            for c in candidate.scene.get("choices", [])
+        ],
+    )
+
+
+def admit(candidate: EncounterCandidate, engine, state, static_anchors: dict) -> dict:
+    """奇遇准入通道（spec §5.6）：生成锁并入临时注册表跑 v1 audit 三查（悬空/空
+    denial/锚），通过后作临时场景并入当前章——内存态并轨：章场景清单追加 + 引擎
+    场景索引/锁注册表登记（engine.py 本批不动，`_scenes` 私有索引在此同步）。
+    生成锁自带锚注记进自审锚表，不进静态锚表。同候选重复准入幂等
+    (场景/锁已登记不重挂，重放全等依赖此）。异源撞车（T16 审查阻断）：
+    生成 scene_id / 锁 id 已被其他来源登记且内容与本候选分歧 → EncounterRejectedError
+    报因带 id（幂等放行只认「内容全等的本候选重入」，禁静默留旧版还回 200）。
+    自审不过 → EncounterRejectedError 报因（400 报因面收敛在路由层）。"""
+    chapter = next((c for c in engine.world.chapters if c.id == state.current_chapter), None)
+    if chapter is None:
+        raise EncounterRejectedError(
+            f"奇遇准入失败：当前章「{state.current_chapter}」不存在（准入通道拒绝）"
+        )
+    scene = _scene_from_candidate(candidate)
+    scene_id = scene.id
+    # 生成锁 → v1 LockDef（临时注册表成员；requires/effects 逐条复制不回灌候选源）。
+    gen_locks: dict[str, LockDef] = {}
+    for lk in candidate.locks:
+        effects = lk.get("effects", [])
+        gen_locks[lk["id"]] = LockDef(
+            id=lk["id"],
+            requires=[dict(cond) for cond in lk["requires"]],
+            denial=lk["denial"],
+            effects=[dict(eff) for eff in effects] if isinstance(effects, list) else [],
+            chapter_id=chapter.id,
+        )
+    # 撞车闸（T16 审查阻断，先于自审）：同 id 已登记且内容分歧 = 异源撞车即拒收。
+    # 幂等放行只认内容全等的本候选重入（同种子+同模板+同参数 → 生成物全等，
+    # generate_encounter 重放地基担保）；内容分歧（如局状态漂移重填参数面、静态
+    # 场景撞名）在此报因带 id——旧形状自审面 update 撞 id 用生成版、落地面
+    # setdefault 撞 id 留旧版，同 id 两路不同物且玩家拿 200 读不到本候选场景。
+    registered_scene = engine._scenes.get(scene_id)
+    if registered_scene is not None and registered_scene != scene:
+        raise EncounterRejectedError(
+            f"奇遇准入撞车：场景 id「{scene_id}」已被其他来源登记，"
+            f"本候选生成物与已登记版内容分歧（异源撞车即拒绝，禁静默留旧版）"
+        )
+    for lock_id, lock_def in gen_locks.items():
+        registered_lock = engine.registry.get(lock_id)
+        if registered_lock is not None and registered_lock != lock_def:
+            raise EncounterRejectedError(
+                f"奇遇准入撞车：锁 id「{lock_id}」已被其他来源登记，"
+                f"本候选生成锁与已登记版内容分歧（异源撞车即拒绝，禁静默留旧版）"
+            )
+    # 临时注册表 = 静态 ∪ 生成锁；自审锚表 = 静态锚 ∪ 生成锁自带锚注记。
+    merged_registry = dict(engine.registry)
+    merged_registry.update(gen_locks)
+    merged_anchors = dict(static_anchors)
+    for lk in candidate.locks:
+        merged_anchors[lk["id"]] = dict(lk["assertion_anchor"])
+    # 临时世界：当前章替换为「原场景 + 临时场景」浅拷贝（自审不过不污染真世界）。
+    temp_world = World(
+        chapters=[
+            replace(c, scenes=[*c.scenes, scene]) if c.id == chapter.id else c
+            for c in engine.world.chapters
+        ],
+        start_attributes={},
+        start_backpack=[],
+    )
+    report = audit_locks(temp_world, merged_registry, merged_anchors)
+    if report.errors:
+        raise EncounterRejectedError("奇遇准入自审未通过：" + "；".join(report.errors))
+    # 自审通过 → 内存态并轨：场景入当前章场景清单 + 引擎索引/注册表登记（幂等）。
+    # engine._scenes 为引擎私有索引（engine.py 本批不动，批次边界），在此同步登记。
+    if all(s.id != scene_id for s in chapter.scenes):
+        chapter.scenes.append(scene)
+    for lock_id, lock_def in gen_locks.items():
+        engine.registry.setdefault(lock_id, lock_def)
+    engine._scenes.setdefault(scene_id, scene)
+    return {"scene_id": scene_id, "lock_ids": [lk["id"] for lk in candidate.locks]}
