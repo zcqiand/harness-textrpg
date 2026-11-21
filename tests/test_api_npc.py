@@ -205,8 +205,13 @@ def test_audit_scene_dangling_npc_ids():
     world.chapters[0].scenes[1].npc_ids = ["ghost_npc"]  # s2 本无 NPC，注入悬空引用
     report = audit_npcs([make_npc()], world)
     assert any("ghost_npc" in e for e in report.errors)
-    # 干净世界 + 合法契约 → 静默通过
-    assert audit_npcs([make_npc()], make_world()).errors == []
+    # 干净世界 + 合法契约（量口径达标：3 契约且每章有挂载）→ 静默通过
+    clean = [
+        make_npc(id="npc_w", chapter="ch01"),
+        make_npc(id="npc_2", chapter="ch01"),
+        make_npc(id="npc_3", chapter="ch01"),
+    ]
+    assert audit_npcs(clean, make_world()).errors == []
 
 
 # fn: M01.F02.I01

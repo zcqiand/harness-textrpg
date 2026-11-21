@@ -224,6 +224,51 @@ def test_audit_non_positive_window_is_error():
         assert any("memory_window" in msg for msg in report.errors), f"window={bad_window} 未报红"
 
 
+# fn: M02.F05.I01
+def test_load_npcs_missing_dir_fails_fast(tmp_path):
+    """fail-fast 锚：data/npcs/ 目录缺失 → raise 点名目录路径（禁静默返 []）。"""
+    with pytest.raises(FileNotFoundError) as excinfo:
+        load_npcs(tmp_path)
+    assert "npcs" in str(excinfo.value)
+
+
+# fn: M02.F05.I01
+def test_load_npcs_empty_dir_fails_fast(tmp_path):
+    """fail-fast 锚：目录在但零契约文件 → raise（NPC 功能面全死不许 vacuous 过）。"""
+    (tmp_path / "npcs").mkdir()
+    with pytest.raises(ValueError) as excinfo:
+        load_npcs(tmp_path)
+    assert "npcs" in str(excinfo.value)
+
+
+# fn: M04.F02.I01
+def test_audit_below_min_npc_count_is_error():
+    """量口径入闸锚：契约总数 <3 → audit 红，报错点名缺口。"""
+    two = [
+        npc_from_dict(_valid_dict()),
+        npc_from_dict(dict(_valid_dict(), id="npc_two", name="老僧")),
+    ]
+    world = load_world(_REPO_DATA)
+    report = audit_npcs(two, world)
+    assert any("NPC 契约总数不足" in msg for msg in report.errors)
+
+
+# fn: M04.F02.I01
+def test_audit_chapter_without_mounted_npc_is_error():
+    """量口径入闸锚：world 章清单任一章名下无挂载 NPC（按契约 chapter 统计）→
+    audit 红，报错点名缺口章 id（不硬编码章清单）。"""
+    world = load_world(_REPO_DATA)
+    three_same_chapter = [
+        npc_from_dict(dict(_valid_dict(), id=f"npc_{i}", name=f"樵夫{i}")) for i in range(3)
+    ]
+    report = audit_npcs(three_same_chapter, world)
+    mounted = {n.chapter for n in three_same_chapter}
+    bare = [c.id for c in world.chapters if c.id not in mounted]
+    assert bare  # 前提：真世界确有未挂载章，锚才有意义
+    for cid in bare:
+        assert any(f"章 {cid}" in msg and "无挂载" in msg for msg in report.errors)
+
+
 # fn: M04.F02.I01
 def test_repo_npc_assets_are_clean_utf8():
     """CJK 纪律：资产文件逐个回验——无 U+FFFD，id 与文件名同形。"""

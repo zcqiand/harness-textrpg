@@ -1,12 +1,14 @@
 """NPC contract loader & startup audit (spec 5.2, data/npcs/*.json).
 
 Audit checks (errors block startup, same shape as locks.audit):
-1. dangling chapter ref (chapter id not in world chapters) -> error
-2. empty red_lines -> error
-3. empty outside -> error
-4. memory_spec.event_tags not a mapping (tag -> trigger word list) -> error
-5. event_tags vocab value not a str list / empty list -> error
-6. scene-side dangling npc_ids (scene references nonexistent NPC id) -> error
+1. quantity gate (total contracts < 3, or any world chapter with zero
+   mounted NPC by contract chapter field) -> error
+2. dangling chapter ref (chapter id not in world chapters) -> error
+3. empty red_lines -> error
+4. empty outside -> error
+5. memory_spec.event_tags not a mapping (tag -> trigger word list) -> error
+6. event_tags vocab value not a str list / empty list -> error
+7. scene-side dangling npc_ids (scene references nonexistent NPC id) -> error
 """
 # @impl M02.F05.I01
 # @impl M04.F02.I01
@@ -36,8 +38,7 @@ class NpcDef:
 
 
 def npc_from_dict(d: dict) -> NpcDef:
-    dict_ok = isinstance(d, dict)
-    if not dict_ok:
+    if not isinstance(d, dict):
         raise ValueError("NPC 契约必须是 dict")
     missing = [
         k
@@ -74,8 +75,10 @@ def npc_from_dict(d: dict) -> NpcDef:
 def load_npcs(data_dir: Path) -> list[NpcDef]:
     npcs_path = Path(data_dir) / "npcs"
     if not npcs_path.is_dir():
-        return []
+        raise FileNotFoundError(f"NPC 契约目录缺失：{npcs_path}（fail-fast，禁静默返空集）")
     packs = sorted(npcs_path.glob("*.json"), key=lambda p: p.name)
+    if not packs:
+        raise ValueError(f"NPC 契约目录为空（零契约文件）：{npcs_path}（NPC 功能面不得静默死）")
     return [npc_from_dict(_read_json(p)) for p in packs]
 
 
@@ -84,6 +87,14 @@ def audit_npcs(npcs: list, world: World) -> AuditReport:
     warnings = []
     chapter_ids = {c.id for c in world.chapters}
     npc_by_id = {n.id: n for n in npcs}
+    # 量口径入闸（M04.F02.I01 契约：≥3 个 NPC，每回 ≥1）：
+    # 总数 <3 红；world 章清单任一章名下零挂载（按契约 chapter 字段统计）红。
+    if len(npcs) < 3:
+        errors.append(f"NPC 契约总数不足：{len(npcs)} < 3（M04.F02.I01：至少 3 个 NPC）")
+    mounted_chapters = {n.chapter for n in npcs}
+    for chapter in world.chapters:
+        if chapter.id not in mounted_chapters:
+            errors.append(f"章 {chapter.id} 无挂载 NPC（M04.F02.I01：每回 ≥1 个 NPC）")
     # 场景侧挂载审计（悬空查同族三连）：形状校验 → 悬空查 → 跨章挂载查。
     for chapter in world.chapters:
         for scene in chapter.scenes:

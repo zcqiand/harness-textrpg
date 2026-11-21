@@ -214,7 +214,7 @@ python scripts/gate.py -p harness-textrpg        # suite gate L0-L5 exit 0（sui
 ## 8. 批次与交接
 
 - v2 先收官（tag+deploy+回归绿）再开 v3（v3 以 v2 为底，书稿明写「第 14 章 v2 为底」）。
-- 两批各自 docs/superpowers/plans/ 落实现计划（writing-plans 流程）。
+- 两批各自落实现计划（writing-plans 流程；注：实际落 `docs/plans/`（PLAN-textrpg-v2.md），本批实况，非 docs/superpowers/plans/）。
 - 收官交接：suite `docs/families/agent.md` textrpg 段更新（Secrets 5→6 件含 LLM_API_KEY 注记）、
   仓 CHANGELOG、`.state/session.json`；书稿侧重冻结导入+撤豁免移交 xr-knowledge-suite
   book-craft 线（不在本批）。
