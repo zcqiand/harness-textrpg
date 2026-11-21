@@ -92,6 +92,7 @@ def make_client(
             llm_client=llm,  # type: ignore[arg-type]
             memory=memory,
             llm_mode=llm_mode,
+            opponents=[],  # 显式空对手注册表（build_router 禁 None 兜底，T11 审查阻断 3）
         )
     )
     return TestClient(app), memory
@@ -118,6 +119,7 @@ def make_real_client() -> tuple[TestClient, MemoryStore]:
             llm_client=MockLLMClient(),
             memory=memory,
             llm_mode="mock",
+            opponents=[],  # 显式空对手注册表（build_router 禁 None 兜底，T11 审查阻断 3）
         )
     )
     return TestClient(app), memory

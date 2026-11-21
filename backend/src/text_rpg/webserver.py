@@ -66,6 +66,7 @@ def create_app() -> FastAPI:
             llm_client=llm_client,
             memory=MemoryStore(npcs),
             llm_mode=llm_mode,
+            opponents=opponents,
         )
     )
     return application

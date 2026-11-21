@@ -100,7 +100,13 @@ def make_client() -> tuple[TestClient, object]:
     app = FastAPI()
     app.include_router(
         build_router(
-            engine, store, npcs=npcs, llm_client=MockLLMClient(), memory=memory, llm_mode="mock"
+            engine,
+            store,
+            npcs=npcs,
+            llm_client=MockLLMClient(),
+            memory=memory,
+            llm_mode="mock",
+            opponents=[],  # 显式空对手注册表（build_router 禁 None 兜底，T11 审查阻断 3）
         )
     )
     return TestClient(app), store
@@ -328,6 +334,7 @@ def test_get_game_scene_carries_real_ch01_prose():
             llm_client=MockLLMClient(),
             memory=memory,
             llm_mode="mock",
+            opponents=[],  # 显式空对手注册表（build_router 禁 None 兜底，T11 审查阻断 3）
         )
     )
     client = TestClient(app)

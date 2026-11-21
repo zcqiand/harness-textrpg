@@ -27,6 +27,8 @@ from text_rpg.engine import GameEngine, GameState
 from text_rpg.guardrails import VERDICT_BLOCKED, Guardrails, LLMClient
 from text_rpg.memory import MemoryStore
 from text_rpg.npcs import NpcDef
+from text_rpg.opponents import OpponentDef
+from text_rpg.oppose import apply_oppose_effects, derive_player_power, settle
 from text_rpg.persistence import SessionStore
 
 __all__ = ["build_router", "state_to_dict"]
@@ -39,6 +41,9 @@ class NewGameBody(BaseModel):
 class ChoiceBody(BaseModel):
     scene_id: str | None = None
     choice_id: str | None = None
+    oppose: str | None = None
+    # 无 power 字段（T11 审查阻断 1）：力量由服务端从局状态派生
+    # （oppose.derive_player_power），客户端无覆盖通道。
 
 
 class TalkBody(BaseModel):
@@ -59,6 +64,16 @@ def state_to_dict(state: GameState) -> dict:
     }
 
 
+def _oppose_seed(state: GameState, opponent_id: str) -> str:
+    """结算种子服务端从局状态派生（客户端不传种子）：对手 id + 章景 + 属性 + 旗标。
+    同局状态 → 同种子 → 账本重放全等（spec §5.5 语义硬约束）。"""
+    attrs = sorted(state.attributes.items())
+    flags = sorted(state.flags)
+    return "|".join(
+        (opponent_id, state.current_chapter, state.current_scene, repr(attrs), repr(flags))
+    )
+
+
 def build_router(
     engine: GameEngine,
     store: SessionStore,
@@ -66,6 +81,7 @@ def build_router(
     llm_client: LLMClient,
     memory: MemoryStore,
     llm_mode: str,
+    opponents: list[OpponentDef] | None = None,
 ) -> APIRouter:
     """v2 装配面：NPC 契约 + LLM client + 记忆库 + LLM_MODE 显式传入（禁 env 兜底，
     create_app 读 env 一次经参数下发）。"""
@@ -78,6 +94,16 @@ def build_router(
         if npc_id not in _guards:
             _guards[npc_id] = Guardrails(_npcs_by_id[npc_id], llm_client, memory)
         return _guards[npc_id]
+
+    # Opponent registry (M02.F06.I02): 显式传入，禁兜底（T11 审查阻断 3，v2 裁量
+    # 先例）：opponents 未传即 fail-fast 拒装配——自仓惰性加载分支已删，数据目录
+    # 单源=webserver._data_dir 形状（build_router 只认参数，不自寻 data/）。
+    if opponents is None:
+        raise ValueError("opponents 必须显式传入 build_router（禁自仓惰性加载兜底）")
+    _opponents_by_id: dict[str, OpponentDef] = {o.id: o for o in opponents}
+
+    def _opponent(opp_id: str) -> OpponentDef | None:
+        return _opponents_by_id.get(opp_id)
 
     def _find_scene(scene_id: str) -> Scene | None:
         for chapter in engine.world.chapters:
@@ -146,6 +172,11 @@ def build_router(
         state = _load_game(game_id)
         if not body.scene_id or not body.choice_id:
             raise HTTPException(status_code=400, detail="scene_id 与 choice_id 必填")
+        # 对手存在性预检（T11 审查阻断 2）：引擎动状态之前判定——未知对手 400 且
+        # 局状态零推进（场景未迁移），预检后才许引擎 submit_choice。
+        opponent = _opponent(body.oppose) if body.oppose else None
+        if body.oppose and opponent is None:
+            raise HTTPException(status_code=400, detail=f"对手不存在：{body.oppose}")
         try:
             result = engine.submit_choice(state, body.scene_id, body.choice_id)
         except KeyError:
@@ -154,14 +185,32 @@ def build_router(
         except ValueError as exc:
             # 未知 choice_id / 终局后提交（游戏已结束）
             raise HTTPException(status_code=400, detail=str(exc)) from None
+        # 对抗结算（M02.F06.I02）：锁放行后（denial 分支不追加）、终局前才追加。
+        # 注（T11 审查建议 2 知悉面）：locked 启发式以 body.scene_id==current_scene
+        # 近似「本抉择作用于当前场景」，非当前场景的 choice_id 在此恒 False——引擎层
+        # 跨场景校验是 v1 面，本分支不扩权。
+        locked = False
+        if body.scene_id == state.current_scene:
+            row = next((r for r in engine.choices_view(state) if r["id"] == body.choice_id), None)
+            locked = bool(row is not None and row["locked"])
+        oppose_ledger = None
+        if body.oppose and not locked and not result.game_over:
+            player_power = derive_player_power(result.state)
+            seed = _oppose_seed(result.state, body.oppose)
+            outcome = settle(opponent, player_power, seed, player_flags=result.state.flags)
+            result.messages.extend(apply_oppose_effects(opponent, outcome["winner"], result.state))
+            oppose_ledger = outcome["ledger"]
         store.put(game_id, result.state)
-        return {
+        response = {
             "messages": result.messages,
             "state": state_to_dict(result.state),
             "unlocked_locks": result.unlocked_locks,
             "game_over": result.game_over,
             "ending": result.ending,
         }
+        if oppose_ledger is not None:
+            response["oppose_ledger"] = oppose_ledger
+        return response
 
     @router.post("/api/games/{game_id}/npcs/{npc_id}/talk")
     def npc_talk(game_id: str, npc_id: str, body: TalkBody) -> dict:
