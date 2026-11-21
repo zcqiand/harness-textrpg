@@ -14,8 +14,10 @@ from pathlib import Path
 
 import pytest
 from text_rpg.encounters import (
+    EncounterRejectedError,
     audit_encounter_templates,
     encounter_template_from_dict,
+    generate_encounter,
     load_encounter_templates,
 )
 
@@ -278,3 +280,280 @@ def test_encounter_template_from_dict_non_dict_raises():
     """miss 侧：非 dict 输入 → ValueError。"""
     with pytest.raises(ValueError):
         encounter_template_from_dict(["not", "a", "dict"])
+
+
+# ------------------------------------------- T15：种子化生成器与无效过滤（M02.F07.I02）
+# 生成器流程：random.Random(seed) 实例化（禁全局 random）→ params 填充场景模板占位符
+# → 锁槽逐一自检（缺锚/空 denial）→ 种子化实例化锁（生成带 [1, BAND] 内种子定数）
+# → 无效过滤五查（悬空/缺锚/空 denial/超锁上限/难度越界）→ 候选奇遇
+# （形状对齐 v1 章包：scene{id,text,npc_ids,choices} / locks v1 锁形状+锚注记 / effects 四类）。
+# 锚纪律裁定（spec §5.6）：生成锁不进 lock_anchors 静态锚表，锚由生成器派生标注，
+# 由本文件模板级双向断言（test_template_level_bidirectional_*）承担。
+
+_PARAM_VALUES = {"place": "两界山下", "fruit": "青皮仙果", "elder": "老比丘"}
+
+
+def _template_by_id(template_id):
+    by_id = {t.id: t for t in load_encounter_templates(_REPO_DATA)}
+    assert template_id in by_id, f"真模板缺失：{template_id}"
+    return by_id[template_id]
+
+
+def _params_for(template):
+    return {p: _PARAM_VALUES.get(p, f"「{p}」所在处") for p in template.params}
+
+
+def _with_lock_slot(template, index, **mutations):
+    """构造模板变体：深拷贝锁槽列后改第 index 槽（不回灌真模板）。"""
+    slots = [dict(s) for s in template.lock_slots]
+    slots[index] = dict(slots[index], **mutations)
+    return replace(template, lock_slots=slots)
+
+
+def _with_difficulty(template, **mutations):
+    return replace(template, difficulty=dict(template.difficulty, **mutations))
+
+
+def _first_admitted_seed(template, params):
+    for seed in range(2000):
+        try:
+            generate_encounter(template, params, seed)
+        except EncounterRejectedError:
+            continue
+        return seed
+    raise AssertionError("2000 个种子内无一种子可过五类无效过滤")
+
+
+def _seed_rejected_with(template, params, keyword):
+    """扫描出第一个拒收报因含 keyword 的种子（生成器确定性 → 扫描结果稳定）。"""
+    for seed in range(2000):
+        try:
+            generate_encounter(template, params, seed)
+        except EncounterRejectedError as exc:
+            if keyword in str(exc):
+                return seed
+    raise AssertionError(f"2000 个种子内未见报因含「{keyword}」的种子")
+
+
+# fn: M02.F07.I02
+def test_generate_encounter_seeded_replay_identical():
+    """同种子+同模板+同参数两次生成结果全等（禁全局 random，只吃 random.Random(seed)）。"""
+    template = _template_by_id("enc_fruit_grove")
+    params = _params_for(template)
+    seed = _first_admitted_seed(template, params)
+    first = generate_encounter(template, params, seed)
+    second = generate_encounter(template, params, seed)
+    assert first == second
+    assert first.scene == second.scene
+    assert first.locks == second.locks
+    assert first.effects == second.effects
+
+
+# fn: M02.F07.I02
+def test_generate_encounter_valid_seed_produces_v1_shape():
+    """有效种子准入：候选奇遇形状对齐 v1 章包的场景/锁/效果。"""
+    template = _template_by_id("enc_lost_sutra")
+    params = _params_for(template)
+    seed = _first_admitted_seed(template, params)
+    candidate = generate_encounter(template, params, seed)
+    # 场景面：id/text/npc_ids/choices 四键齐（v1 Scene 形状）
+    assert set(candidate.scene) >= {"id", "text", "npc_ids", "choices"}
+    assert candidate.scene["npc_ids"] == []
+    # 锁面：非空，每把锁 v1 锁形状 + 生成器派生的断言锚注记（正反两侧齐）
+    assert candidate.locks
+    assert len(candidate.locks) <= template.difficulty["locks_max"]
+    for lock in candidate.locks:
+        assert set(lock) >= {"id", "requires", "denial", "effects"}
+        anchor = lock["assertion_anchor"]
+        assert anchor["pass"].strip() and anchor["deny"].strip()
+    # 效果面：v1 效果四类（attr/item_add/item_remove/flag）
+    for eff in candidate.effects:
+        assert set(eff) <= {"attr", "item_add", "item_remove", "flag"}
+    # 场景抉择挂第一把锁（v1 choice.lock 形状），效果面挂抉择
+    assert candidate.scene["choices"]
+    assert candidate.scene["choices"][0]["lock"] == candidate.locks[0]["id"]
+
+
+# fn: M02.F07.I02
+def test_generate_encounter_fills_params_into_scene_text():
+    """params 填充 scene_template 占位符：填充后场景文本无残留占位、含参数词面。"""
+    template = _template_by_id("enc_fruit_grove")
+    candidate = generate_encounter(
+        template, _params_for(template), _first_admitted_seed(template, _params_for(template))
+    )
+    text = candidate.scene["text"]
+    assert "{" not in text and "}" not in text, f"场景文本残留占位：{text}"
+    assert "两界山下" in text and "青皮仙果" in text
+
+
+# fn: M02.F07.I02
+def test_generate_encounter_seed_drives_lock_count():
+    """种子真驱动生成：不同种子 → 生成锁数可不同（生成带内种子定数）。"""
+    template = _template_by_id("enc_lost_sutra")
+    params = _params_for(template)
+    counts = set()
+    for seed in range(200):
+        try:
+            candidate = generate_encounter(template, params, seed)
+        except EncounterRejectedError:
+            continue
+        counts.add(len(candidate.locks))
+    assert len(counts) > 1, f"200 种子内生成锁数无变化：{sorted(counts)}"
+
+
+# fn: M02.F07.I02
+def test_generate_encounter_rejects_dangling_param():
+    """引用悬空：params 缺 declared 键 → 场景文本残留 {占位} 即拒收并报因（v1 audit
+    悬空占位同机制；世界面悬空由 T16 锁注册表自审兜底）。"""
+    template = _template_by_id("enc_fruit_grove")
+    params = _params_for(template)
+    partial = dict(params)
+    partial.pop(sorted(partial)[0])
+    with pytest.raises(EncounterRejectedError) as excinfo:
+        generate_encounter(template, partial, 1)
+    assert "悬空" in str(excinfo.value)
+
+
+# fn: M02.F07.I02
+def test_generate_encounter_rejects_lock_count_over_max():
+    """超锁上限：种子使生成锁数 > difficulty.locks_max → 拒收并报因。"""
+    template = _template_by_id("enc_fruit_grove")
+    params = _params_for(template)
+    seed = _seed_rejected_with(template, params, "超锁上限")
+    with pytest.raises(EncounterRejectedError) as excinfo:
+        generate_encounter(template, params, seed)
+    assert "超锁上限" in str(excinfo.value)
+
+
+# fn: M02.F07.I02
+def test_generate_encounter_rejects_attr_below_difficulty_min():
+    """难度越界：attr 所需值 < difficulty.attr_min → 拒收并报因
+    （构造模板变体：attr_min 抬到所需值之上；真模板不可变，变体不落盘）。"""
+    template = _with_difficulty(
+        _template_by_id("enc_fruit_grove"), attr_min=4
+    )  # requires insight>=3 < 4
+    params = _params_for(template)
+    with pytest.raises(EncounterRejectedError) as excinfo:
+        generate_encounter(template, params, 1)
+    assert "难度越界" in str(excinfo.value)
+
+
+# fn: M02.F07.I02
+def test_generate_encounter_rejects_blank_denial():
+    """空 denial：锁槽 denial 为空白 → 拒收并报因（玩家必须读得懂缺什么）。"""
+    template = _with_lock_slot(_template_by_id("enc_fruit_grove"), 0, denial="   ")
+    with pytest.raises(EncounterRejectedError) as excinfo:
+        generate_encounter(template, _params_for(template), 1)
+    assert "denial" in str(excinfo.value)
+
+
+# fn: M02.F07.I02
+def test_generate_encounter_rejects_missing_anchor():
+    """缺锚：锁槽 id 为空 → 拒收并报因（真触发=锁槽 id 为空；_derive_anchor 恒产
+    非空串，「锚派生为空」支已删——生成锁锚由生成器派生标注，不进 lock_anchors）。"""
+    template = _with_lock_slot(_template_by_id("enc_fruit_grove"), 0, id="")
+    with pytest.raises(EncounterRejectedError) as excinfo:
+        generate_encounter(template, _params_for(template), 1)
+    assert "锁槽 id 为空" in str(excinfo.value)
+
+
+# fn: M02.F07.I02
+def test_generate_encounter_params_must_be_dict():
+    """fail-fast：params 非 dict → ValueError（str 会按字符静默拆散，报错须近根因）。"""
+    template = _template_by_id("enc_fruit_grove")
+    with pytest.raises(ValueError) as excinfo:
+        generate_encounter(template, "两界山下", 1)
+    assert "dict" in str(excinfo.value)
+
+
+# fn: M02.F07.I02
+def test_generate_encounter_rejects_empty_lock_slots():
+    """入闸拒收：lock_slots 空 → EncounterRejectedError 报因「锁条件槽为空」
+    （与 audit 同口径；修复前此处 ZeroDivisionError 崩）。"""
+    template = replace(_template_by_id("enc_fruit_grove"), lock_slots=[])
+    with pytest.raises(EncounterRejectedError) as excinfo:
+        generate_encounter(template, _params_for(template), 1)
+    assert "锁条件槽为空" in str(excinfo.value)
+
+
+# fn: M02.F07.I02
+def test_generate_encounter_rejects_difficulty_missing_locks_max():
+    """难度缺键：difficulty 缺 locks_max → 拒收并报因
+    （T15 审查裁定禁软兜底——缺难度规约不许静默放行）。"""
+    template = replace(_template_by_id("enc_fruit_grove"), difficulty={"attr_min": 1})
+    with pytest.raises(EncounterRejectedError) as excinfo:
+        generate_encounter(template, _params_for(template), 1)
+    assert "难度缺键" in str(excinfo.value) and "locks_max" in str(excinfo.value)
+
+
+# fn: M02.F07.I02
+def test_generate_encounter_rejects_difficulty_missing_attr_min():
+    """难度缺键：difficulty 缺 attr_min → 拒收并报因
+    （locks_max=4 顶满生成带，保证走到 attr 查而不被超锁上限先拦）。"""
+    template = replace(_template_by_id("enc_fruit_grove"), difficulty={"locks_max": 4})
+    with pytest.raises(EncounterRejectedError) as excinfo:
+        generate_encounter(template, _params_for(template), 1)
+    assert "难度缺键" in str(excinfo.value) and "attr_min" in str(excinfo.value)
+
+
+# fn: M02.F07.I02
+def test_admit_choice_effects_not_aliased_to_candidate_effects():
+    """别名断言：admit_choice["effects"] 与 candidate.effects 必须是两个独立容器
+    （is 判异；修复前共享同一 list，运行期改写其一回灌另一）。"""
+    template = _template_by_id("enc_fruit_grove")
+    params = _params_for(template)
+    seed = _first_admitted_seed(template, params)
+    candidate = generate_encounter(template, params, seed)
+    choice_effects = candidate.scene["choices"][0]["effects"]
+    assert choice_effects is not candidate.effects
+
+
+_TEMPLATE_IDS = [t.id for t in load_encounter_templates(_REPO_DATA)]
+
+
+@pytest.mark.parametrize("template_id", _TEMPLATE_IDS)
+# fn: M02.F07.I02
+def test_template_level_bidirectional_assertion(template_id):
+    """模板级双向断言（spec §5.6 锚纪律裁定，数据驱动遍历 load_encounter_templates
+    全量真模板——新模板入 data/encounter-templates/ 即自动纳入，不须改测试名单）：
+    正向=有效参数+种子 → 生成+过滤通过；反向=构造的五类无效种子/参数/模板变体
+    → 各自拒收并报因。真模板不可变：反向变体均经 replace 构造、不落盘。"""
+    template = _template_by_id(template_id)
+    params = _params_for(template)
+    seed = _first_admitted_seed(template, params)
+
+    # 正向：生成+过滤通过
+    candidate = generate_encounter(template, params, seed)
+    assert candidate.template_id == template_id
+    assert 1 <= len(candidate.locks) <= template.difficulty["locks_max"]
+    for lock in candidate.locks:
+        assert lock["assertion_anchor"]["pass"] and lock["assertion_anchor"]["deny"]
+
+    # 反向一：难度越界（attr 所需值 < 抬高后的 attr_min）
+    harder = _with_difficulty(template, attr_min=template.difficulty["attr_min"] + 1)
+    with pytest.raises(EncounterRejectedError) as excinfo:
+        generate_encounter(harder, params, seed)
+    assert "难度越界" in str(excinfo.value)
+
+    # 反向二：引用悬空（params 缺 declared 键 → 占位残留）
+    partial = dict(params)
+    partial.pop(sorted(partial)[0])
+    with pytest.raises(EncounterRejectedError) as excinfo:
+        generate_encounter(template, partial, seed)
+    assert "悬空" in str(excinfo.value)
+
+    # 反向三：空 denial
+    with pytest.raises(EncounterRejectedError) as excinfo:
+        generate_encounter(_with_lock_slot(template, 0, denial="  "), params, seed)
+    assert "denial" in str(excinfo.value)
+
+    # 反向四：缺锚（锁槽 id 清空 → 锁槽 id 为空即拒收）
+    with pytest.raises(EncounterRejectedError) as excinfo:
+        generate_encounter(_with_lock_slot(template, 0, id=""), params, seed)
+    assert "锁槽 id 为空" in str(excinfo.value)
+
+    # 反向五：超锁上限（种子扫描出锁数超 locks_max 的无效种子）
+    bad_seed = _seed_rejected_with(template, params, "超锁上限")
+    with pytest.raises(EncounterRejectedError) as excinfo:
+        generate_encounter(template, params, bad_seed)
+    assert "超锁上限" in str(excinfo.value)
