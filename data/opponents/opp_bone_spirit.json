@@ -1,0 +1,11 @@
+{
+  "id": "opp_bone_spirit",
+  "name": "白骨精",
+  "chapter": "ch02",
+  "base": {"deception": 3, "insight": 2},
+  "strategy_table": [
+    {"when": {"player_flag": "white_bone_evidence_1"}, "action": "weep", "power": 2},
+    {"when": {"player_flag": "white_bone_evidence_2"}, "action": "flee", "power": 1},
+    {"when": {"default": true}, "action": "disguise", "power": 3}
+  ]
+}

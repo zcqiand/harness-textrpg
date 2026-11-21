@@ -1,0 +1,10 @@
+{
+  "id": "opp_prince_dragon",
+  "name": "魔王亲王",
+  "chapter": "ch01",
+  "base": {"might": 3, "deception": 2},
+  "strategy_table": [
+    {"when": {"player_flag": "helped_woodcutter"}, "action": "shadow_shortcut", "power": 2},
+    {"when": {"default": true}, "action": "block_the_road", "power": 3}
+  ]
+}

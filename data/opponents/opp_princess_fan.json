@@ -1,0 +1,11 @@
+{
+  "id": "opp_princess_fan",
+  "name": "铁扇公主",
+  "chapter": "ch03",
+  "base": {"deception": 2, "insight": 3},
+  "strategy_table": [
+    {"when": {"player_flag": "true_fan"}, "action": "yield_fan", "power": 1},
+    {"when": {"player_flag": "suspect_fake"}, "action": "feign_surrender", "power": 2},
+    {"when": {"default": true}, "action": "rage_blast", "power": 3}
+  ]
+}

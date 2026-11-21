@@ -19,6 +19,7 @@ from text_rpg.lock_anchors import ANCHORS
 from text_rpg.locks import audit, build_registry
 from text_rpg.memory import MemoryStore
 from text_rpg.npcs import audit_npcs, load_npcs
+from text_rpg.opponents import audit_opponents, load_opponents
 from text_rpg.persistence import SessionStore
 from text_rpg.routes import build_router
 
@@ -29,16 +30,19 @@ def _data_dir() -> Path:
     return Path(__file__).resolve().parents[3] / "data"
 
 
-def _audit_gate(world, registry, anchors, npcs=None, guard_anchors=None) -> None:
+def _audit_gate(world, registry, anchors, npcs=None, guard_anchors=None, opponents=None) -> None:
     """启动自审闸：errors 非空 → 拒绝启动（spec §5.1）。
 
     NPC 契约审计与锁审计并账：NPC errors 并入同一闸（spec §5.2 挂进同一路径）。
     npcs=None 时跳过 NPC 面（v1 三参调用形状保持兼容）。
     护栏锚核查并账（M02.F05.I05，lock_anchors 同形）：guard_anchors=None 时跳过护栏面。
+    对手卡契约审计并账（M02.F06.I01，npcs 同形）：opponents=None 时跳过对手卡面。
     """
     report = audit(world, registry, anchors)
     if npcs is not None:
         report.errors.extend(audit_npcs(npcs, world).errors)
+    if opponents is not None:
+        report.errors.extend(audit_opponents(opponents, world).errors)
     if guard_anchors is not None:
         report.errors.extend(audit_guards(guard_anchors).errors)
     if report.errors:
@@ -49,7 +53,8 @@ def create_app() -> FastAPI:
     world = load_world(_data_dir())
     registry = build_registry(world)
     npcs = load_npcs(data_dir=_data_dir())
-    _audit_gate(world, registry, ANCHORS, npcs, GUARD_ANCHORS)
+    opponents = load_opponents(_data_dir())
+    _audit_gate(world, registry, ANCHORS, npcs, GUARD_ANCHORS, opponents)
     engine = GameEngine(world, registry)
     llm_client, llm_mode = create_client()
     application = FastAPI(title="harness-textrpg")
