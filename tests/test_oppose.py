@@ -154,19 +154,6 @@ def test_choice_without_oppose_has_no_ledger_key():
 def test_choice_oppose_unknown_opponent_is_400():
     """未知对手 id → 400（中文短语锚）。"""
     client, _ = _make_client()
-    game_id = engine_view_guard(client)
-    resp = client.post(
-        f"/api/games/{game_id}/choice",
-        json={"scene_id": "s1", "choice_id": "fight", "oppose": "opp_ghost"},
-    )
-    assert resp.status_code == 400
-    assert "对手不存在" in resp.json()["detail"]
-
-
-# fn: M02.F06.I02
-def test_choice_oppose_unknown_opponent_is_400():
-    """未知对手 id → 400（中文短语锚）。"""
-    client, _ = _make_client()
     game_id = _new_game(client)
     resp = client.post(
         f"/api/games/{game_id}/choice",
@@ -234,6 +221,72 @@ def test_choice_oppose_skipped_when_lock_denies():
     body = resp.json()
     assert "oppose_ledger" not in body
     assert body["messages"] == ["此路不通"]
+
+
+# fn: M02.F06.I03
+def test_replay_same_seed_same_state_ledger_field_identical():
+    """重放全等验收锚（T12 主断言）：同种子+同局状态两次 settle → 账本逐字段
+    （seq/actor/action/power/roll 五键各各相等）全等，winner 亦同。"""
+    opp = make_opponent()
+    a = settle(opp, 5, "seed-replay", player_flags={"evidence"})
+    b = settle(opp, 5, "seed-replay", player_flags={"evidence"})
+    assert len(a["ledger"]) == len(b["ledger"]) == 2
+    for ra, rb in zip(a["ledger"], b["ledger"]):
+        for key in ("seq", "actor", "action", "power", "roll"):
+            assert ra[key] == rb[key], f"重放不等：字段 {key}（{ra[key]!r} vs {rb[key]!r}）"
+    assert a["winner"] == b["winner"]
+
+
+# fn: M02.F06.I03
+def test_distinct_seeds_roll_sequences_differ():
+    """异种子 → 结果可异：同一局状态用差异明显的种子对（seed-2016 vs seed-1）
+    断言 roll 序列不同——种子真实参与掷点，非摆设（若偶发相同换种子对）。"""
+    opp = make_opponent()
+
+    def rolls(seed: str) -> tuple[int, int]:
+        return tuple(
+            row["roll"] for row in settle(opp, 5, seed, player_flags={"evidence"})["ledger"]
+        )
+
+    assert rolls("seed-2016") != rolls("seed-1")
+
+
+# fn: M02.F06.I03
+def test_ledger_audit_seq_consecutive_and_two_parties():
+    """账本逐条对账：seq 从 1 连续递增无跳号、每条五字段齐、actor 两方各一
+    （player 一条 + 对手 id 一条）。"""
+    opp = make_opponent()
+    ledger = settle(opp, 5, "seed-audit", player_flags={"evidence"})["ledger"]
+    assert [row["seq"] for row in ledger] == list(range(1, len(ledger) + 1))
+    for row in ledger:
+        assert set(row) == _LEDGER_KEYS
+        assert isinstance(row["seq"], int) and isinstance(row["power"], int)
+        assert isinstance(row["roll"], int) and 1 <= row["roll"] <= 6
+        assert isinstance(row["actor"], str) and row["actor"]
+        assert isinstance(row["action"], str) and row["action"]
+    actors = [row["actor"] for row in ledger]
+    assert sorted(actors) == sorted(["player", opp.id])
+
+
+# fn: M02.F06.I03
+def test_choice_oppose_route_replay_identical_ledger():
+    """路由级重放钉：种子服务端从局状态派生（客户端不传种子）——两个独立同构局
+    （同世界同初始状态、各自建局）各 POST 同一 choice（带 oppose）→ oppose_ledger
+    逐字段全等。choice 会推进状态，故重放用两局各打一次，不重复打同一局。"""
+    client, _ = _make_client()
+    ledgers = []
+    for _ in range(2):
+        game_id = _new_game(client)
+        resp = client.post(
+            f"/api/games/{game_id}/choice",
+            json={"scene_id": "s1", "choice_id": "fight", "oppose": "opp_test_spirit"},
+        )
+        assert resp.status_code == 200
+        ledgers.append(resp.json()["oppose_ledger"])
+    assert len(ledgers[0]) == len(ledgers[1]) == 2
+    for ra, rb in zip(ledgers[0], ledgers[1]):
+        for key in ("seq", "actor", "action", "power", "roll"):
+            assert ra[key] == rb[key], f"路由重放不等：字段 {key}（{ra[key]!r} vs {rb[key]!r}）"
 
 
 def _make_client() -> tuple[TestClient, object]:
