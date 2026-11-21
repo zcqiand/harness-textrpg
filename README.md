@@ -14,7 +14,7 @@ pytest -q                # 74 例全绿（含 12 锚 ×2 参数化）
 
 APP_PORT=8806 python -c "from text_rpg.webserver import main; main()"
 # APP_PORT 必填 fail-fast（缺省即 RuntimeError，无默认端口兜底）
-# 冒烟：curl http://127.0.0.1:8806/api/health → {"ok":true,"mode":"local"}
+# 冒烟：curl http://127.0.0.1:8806/api/health → {"ok":true,"mode":"mock"}（mode 随 LLM_MODE：mock/live）
 # 注意：`uvicorn text_rpg.webserver:app`（CLI 形状）不消费 APP_PORT，会绑 uvicorn 默认 8000——
 # APP_PORT 只在 webserver.main() 里读，起服/冒烟一律走上面 main() 入口。
 ```

@@ -1,8 +1,23 @@
 # 更新日志
 
-格式照 `v<MAJOR>.<MINOR>.<PATCH>-<YYYYMMDD>`（tag 即放行：全量回归绿后打 tag）。
+格式照 `v<MAJOR>.<MINOR>.<PATCH>-<YYYYMMDD>`（tag 即放行：全量182→270 passed 全绿后打 tag）。
 
 ## [Unreleased]
+
+v3.0.0（ch17 四源整合）十任务批（T9-T18，HEAD=171bb1c；本段含收官件）：
+
+- 功能面：
+  - 策略对手线（T9-T12）：3 对手卡（每回 ≥1）+ 加载自审七检 + choice 内嵌 oppose 种子化结算
+    （账本 [{seq,actor,action,power,roll}]）+ 同种子同局状态重放全等
+  - 程序化奇遇线（T13-T16）：2 奇遇模板（参数化槽位+锁条件槽+效果槽+难度规约）+ 种子化生成器
+    （五类无效过滤报因）+ 准入通道（服务端派生种子，临时场景并入当前章，锁注册表自审+撞车闸）
+  - 验收与证据（T17-T18）：scripts/acceptance.py 四能力探活 + 证据回执 JSON schema（落 _work/）
+- 契约变更：
+  - POST /api/games/{id}/encounters 新端点（准入）；GET /api/games/{id}/scenes/{sid} 新端点（任意场景读面）
+  - POST /choice 响应增 oppose_ledger 键（声明 oppose 时）；力量服务端派生（属性和+旗标计数），无客户端力量字段
+  - 装配面：build_router 增显式 templates/opponents 参数（None fail-fast 拒装配，禁惰性兜底）
+- 冒烟五探针过（mock）：拦截/记忆/对手重放全等/奇遇准入可见
+- 冒烟期望文档面同步：README:17 与 功能规格 A1 的 mode 期望 "local"→"mock"（v1 遗留挂账清偿）
 
 v2.0.0（ch14 带记忆 NPC）八任务批（T1-T7 已提交，HEAD=8dd7d64；本段含 T8 代码面清偿）：
 
