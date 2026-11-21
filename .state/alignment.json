@@ -6,7 +6,7 @@
     "features": 17,
     "items": 43
   },
-  "warnings_total": 79,
+  "warnings_total": 77,
   "warnings": {
     "已上线但无设计映射": [
       "M01.F01.I01",
@@ -92,10 +92,6 @@
       "M03.F04.I01",
       "M03.F04.I02",
       "M04.F02.I01"
-    ],
-    "开发中但代码里无 UI 入口(用户还点不到)": [
-      "M03.F04.I01",
-      "M03.F04.I02"
     ]
   },
   "unreachable_shipped": [],
@@ -462,7 +458,11 @@
       "flows": [],
       "designs": [],
       "tests": [],
-      "entry": []
+      "entry": [
+        "frontend/src/__tests__/talk.test.tsx",
+        "frontend/src/views/JourneyView.tsx",
+        "frontend/src/views/TalkView.tsx"
+      ]
     },
     "M03.F04.I02": {
       "name": "护栏拦截提示",
@@ -472,7 +472,10 @@
       "flows": [],
       "designs": [],
       "tests": [],
-      "entry": []
+      "entry": [
+        "frontend/src/__tests__/talk.test.tsx",
+        "frontend/src/views/TalkView.tsx"
+      ]
     },
     "M04.F01.I01": {
       "name": "开局配置",
