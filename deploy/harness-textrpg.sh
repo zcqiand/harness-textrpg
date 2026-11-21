@@ -4,6 +4,7 @@
 # 由 .github/workflows/ci.yml 的 deploy job 远程调用：
 #   ssh deploy@vps -- cd /home/deploy/harness-textrpg
 #                    && sh harness-textrpg.sh $DOCKER_USERNAME $DOCKER_PASSWORD $VERSION
+# 环境变量：LLM_API_KEY 必填（CI 自 secret 转发），缺失 exit 2。
 #
 # agent 家族部署形态（docs/families/agent.md，2026-11-20 分配 5313/5413），
 # harness 家族首个 web+api 双容器仓：
@@ -12,9 +13,10 @@
 #   vhost htextrpg.xiangru.uk：/ → web 容器，/api/ → api 容器
 #
 # 与家族后端仓 deploy 脚本的差异：
-#   - 一仓双镜像（harness-textrpg-api / -web），env-file 仅 APP_PORT 一个键
-#   - 无 LLM_API_KEY（本仓无 LLM 依赖）、无数据卷（sessions 在内存，
-#     剧情数据已烘焙进 api 镜像）
+#   - 一仓双镜像（harness-textrpg-api / -web），env-file 五键
+#     （APP_PORT + LLM 四键，v2.0.1 起随后端 fail-fast 装配契约补齐）
+#   - LLM_API_KEY 自 CI secret 转发，空值/占位即 fail-fast；
+#     无数据卷（sessions 在内存，剧情数据已烘焙进 api 镜像）
 #   - 探活 /api/health（{"ok":true,...}）+ web 静态首页（200），各 120s
 #
 # 前置: deploy 用户需在 docker 组中(sudo usermod -aG docker deploy)；
@@ -41,19 +43,57 @@ if [ -z "$USERNAME" ] || [ -z "$PASSWORD" ]; then
   exit 2
 fi
 
-# env-file 自举/补键：键集合 = 仅 APP_PORT（家族契约 prod 值 5413）。
-# append-if-missing 教训：append 不覆盖已有行，运维手工改过的值保留。
+# env-file 自举/补键：键集合 = APP_PORT（家族契约 prod 值 5413）+ LLM 四键
+# （v2.0.0 后端 fail-fast 装配：LLM_MODE/LLM_BASE_URL/LLM_MODEL 内置 prod 值；
+# LLM_API_KEY 自 CI secret 经 env 转发，空/占位即拒绝部署——禁 env 默认值兜底）。
+# append-if-missing 教训：非密三键仅在「缺失或值为空/占位」时补写，
+# 运维手工改过的实值保留。LLM_API_KEY 同规则补写（老占位行换新 secret）。
+if [ -z "${LLM_API_KEY:-}" ]; then
+  echo "ERROR: LLM_API_KEY 为空（CI secret 未配置或未转发），拒绝部署" >&2
+  exit 2
+fi
 ENV_FILE="$BASE/harness-textrpg.env"
+LLM_MODE_PROD="live"
+LLM_BASE_URL_PROD="https://api.minimaxi.com/v1"
+LLM_MODEL_PROD="MiniMax-M2.5"
+upsert_env() {
+  key="$1"
+  val="$2"
+  if grep -q "^${key}=" "$ENV_FILE"; then
+    cur="$(sed -n "s/^${key}=//p" "$ENV_FILE" | head -n 1)"
+    case "$cur" in
+      ""|"changeme"|"placeholder")
+        sed -i "s|^${key}=.*|${key}=${val}|" "$ENV_FILE"
+        ;;
+    esac
+  else
+    printf '%s=%s\n' "$key" "$val" >> "$ENV_FILE"
+  fi
+}
 if [ ! -f "$ENV_FILE" ]; then
-  echo "→ bootstrapping $ENV_FILE"
+  echo "→ bootstrapping $ENV_FILE（五键）"
   umask 077
-  printf 'APP_PORT=%s\n' "$API_PORT" > "$ENV_FILE"
+  {
+    printf 'APP_PORT=%s\n' "$API_PORT"
+    printf 'LLM_MODE=%s\n' "$LLM_MODE_PROD"
+    printf 'LLM_BASE_URL=%s\n' "$LLM_BASE_URL_PROD"
+    printf 'LLM_MODEL=%s\n' "$LLM_MODEL_PROD"
+    printf 'LLM_API_KEY=%s\n' "$LLM_API_KEY"
+  } > "$ENV_FILE"
   chown deploy:deploy "$ENV_FILE" 2>/dev/null || true
   chmod 600 "$ENV_FILE"
-elif ! grep -q '^APP_PORT=' "$ENV_FILE"; then
-  echo "→ append APP_PORT to existing $ENV_FILE"
+else
+  if ! grep -q '^APP_PORT=' "$ENV_FILE"; then
+    echo "→ append APP_PORT to existing $ENV_FILE"
+    umask 077
+    printf 'APP_PORT=%s\n' "$API_PORT" >> "$ENV_FILE"
+  fi
   umask 077
-  printf 'APP_PORT=%s\n' "$API_PORT" >> "$ENV_FILE"
+  upsert_env LLM_MODE "$LLM_MODE_PROD"
+  upsert_env LLM_BASE_URL "$LLM_BASE_URL_PROD"
+  upsert_env LLM_MODEL "$LLM_MODEL_PROD"
+  upsert_env LLM_API_KEY "$LLM_API_KEY"
+  chmod 600 "$ENV_FILE" 2>/dev/null || true
 fi
 
 # nginx vhost 重渲染（每次 deploy 都跑；模板总从 main 拉最新——
@@ -115,7 +155,7 @@ docker rm "$CONTAINER_API" 2>/dev/null || true
 docker stop "$CONTAINER_WEB" 2>/dev/null || true
 docker rm "$CONTAINER_WEB" 2>/dev/null || true
 
-echo "→ docker run api (host=container=$API_PORT, env-file 仅 APP_PORT, 无数据卷)"
+echo "→ docker run api (host=container=$API_PORT, env-file 五键, 无数据卷)"
 docker run -d \
   --name "$CONTAINER_API" \
   --restart unless-stopped \

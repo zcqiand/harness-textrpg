@@ -4,6 +4,16 @@
 
 ## [Unreleased]
 
+v2.0.1（部署链补齐，同日）：
+
+- deploy/harness-textrpg.sh env-file 自举/补键由仅 APP_PORT 升五键（APP_PORT + LLM_MODE/
+  LLM_BASE_URL/LLM_MODEL/LLM_API_KEY）——v2.0.0 后端四键 fail-fast 装配而部署链未随批，
+  首航 api 容器起手即炸 `缺少环境变量 LLM_MODE`（CI run 44869714495 实付）
+- LLM 三非密键内置 prod 值（live / `https://api.minimaxi.com/v1` / MiniMax-M2.5），
+  仅在缺失或值为空/占位时补写，运维实值不覆盖；LLM_API_KEY 自 CI secret 经 ssh envs
+  转发，空/占位拒绝部署（家族第 6 件 secret）
+- ci.yml deploy job 同步转发 LLM_API_KEY
+
 v3.0.0（ch17 四源整合）十任务批（T9-T18，HEAD=171bb1c；本段含收官件）：
 
 - 功能面：

@@ -6,10 +6,11 @@ name: CI
 # deploy job 是 agent 家族部署链（docs/families/agent.md，2026-11-20 起 5313/5413）：
 # harness 家族首个 web+api 双容器仓。tag push → 双镜像
 # zcqiand/harness-textrpg-api + zcqiand/harness-textrpg-web（latest + tag 双份）
-# → VPS deploy/harness-textrpg.sh：env-file 自举（仅 APP_PORT 一个键）
+# → VPS deploy/harness-textrpg.sh：env-file 自举/补键（APP_PORT + LLM 四键，
+# v2.0.1 起；LLM_API_KEY 经 env 转发，空/占位 fail-fast）
 # + 渲染 vhost（htextrpg.xiangru.uk，cert 归一化 sed 规则排在 <domain> 之前——家族纪律）
 # + 起双容器 + /api/health 与 web / 各探 120s。
-# 无 LLM_API_KEY、无数据卷（sessions 在内存）。
+# 无数据卷（sessions 在内存）。
 on:
   push:
     branches: [main]
@@ -101,16 +102,17 @@ jobs:
         uses: appleboy/ssh-action@v1
         # appleboy/ssh-action@v1 的 ${{ secrets.* }} 不会自动进 SSH 远端 shell;
         # step env 注入 Actions env, with.envs 列出要转发的名字（逗号分隔）。
-        # 本仓无 secret 依赖（无 LLM_API_KEY、无数据卷）：仅转发可选 vhost 变量
-        # （缺省走脚本内置值）。
+        # LLM_API_KEY（v2.0.1 起，第 6 件 secret）转发给 deploy 脚本写 env-file；
+        # 仅转发可选 vhost 变量与 LLM_API_KEY（缺省走脚本内置值）。
         env:
           NGINX_DOMAIN: ${{ vars.NGINX_DOMAIN }}
           NGINX_CERT_BASENAME: ${{ vars.NGINX_CERT_BASENAME }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          envs: NGINX_DOMAIN,NGINX_CERT_BASENAME
+          envs: NGINX_DOMAIN,NGINX_CERT_BASENAME,LLM_API_KEY
           script: |
             # 自举: 首次部署无 /home/deploy/<repo>/ 时自动建 + 拉 deploy 脚本
             set -e
