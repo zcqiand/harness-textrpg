@@ -1,10 +1,11 @@
-"""API 路由层：五端点，锁评估只在后端求值一次。
+"""API 路由层：v1 五端点 + v2 NPC 对话端点，锁评估只在后端求值一次。
 
 序列化器放本层（JSON 边界归路由，engine 保持传输无关——设计取舍记录在案）。
-形状真源 = spec §5.3。错误形状：
-- 未知 game id → 404（GET 与 POST choice 同形）
-- 未知 scene_id / choice_id → 400（engine KeyError / ValueError 收敛）
+形状真源 = v1 spec §5.3 + v2/v3 design spec §5.4。错误形状：
+- 未知 game id → 404（GET 与 POST choice/talk 同形）
+- 未知 scene_id / choice_id / npc_id → 400/404（engine KeyError / ValueError 收敛）
 - 终局后提交 → 400（engine ValueError「游戏已结束」）
+- NPC 端点：空输入 400、NPC 不在当前场景 400（对话入口来自场景数据）
 """
 # @impl M01.F01.I01
 # @impl M01.F01.I02
@@ -12,13 +13,20 @@
 # @impl M01.F01.I04
 # @impl M01.F01.I05
 # @impl M01.F01.I06
+# @impl M01.F02.I01
+# @impl M01.F02.I02
+# @impl M01.F02.I03
 
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from text_rpg.chapters import Scene
 from text_rpg.engine import GameEngine, GameState
+from text_rpg.guardrails import VERDICT_BLOCKED, Guardrails, LLMClient
+from text_rpg.memory import MemoryStore
+from text_rpg.npcs import NpcDef
 from text_rpg.persistence import SessionStore
 
 __all__ = ["build_router", "state_to_dict"]
@@ -31,6 +39,10 @@ class NewGameBody(BaseModel):
 class ChoiceBody(BaseModel):
     scene_id: str | None = None
     choice_id: str | None = None
+
+
+class TalkBody(BaseModel):
+    text: str | None = None
 
 
 def state_to_dict(state: GameState) -> dict:
@@ -47,24 +59,47 @@ def state_to_dict(state: GameState) -> dict:
     }
 
 
-def build_router(engine: GameEngine, store: SessionStore) -> APIRouter:
+def build_router(
+    engine: GameEngine,
+    store: SessionStore,
+    npcs: list[NpcDef],
+    llm_client: LLMClient,
+    memory: MemoryStore,
+    llm_mode: str,
+) -> APIRouter:
+    """v2 装配面：NPC 契约 + LLM client + 记忆库 + LLM_MODE 显式传入（禁 env 兜底，
+    create_app 读 env 一次经参数下发）。"""
+    _npcs_by_id = {n.id: n for n in npcs}
+    # npc_id → Guardrails（惰性构建，NPC 契约不可变）。并发面为单用户 demo 姿态，
+    # 与 v1 SessionStore 同类假设（进程内单写者），不加锁。
+    _guards: dict[str, Guardrails] = {}
+
+    def _guard(npc_id: str) -> Guardrails:
+        if npc_id not in _guards:
+            _guards[npc_id] = Guardrails(_npcs_by_id[npc_id], llm_client, memory)
+        return _guards[npc_id]
+
+    def _find_scene(scene_id: str) -> Scene | None:
+        for chapter in engine.world.chapters:
+            for scene in chapter.scenes:
+                if scene.id == scene_id:
+                    return scene
+        return None
+
     def _scene_view(state: GameState) -> dict:
-        """当前场景视图：{id, text}。text 从 world 章包取（spec §5.4 场景文案）。"""
-
-        def _text() -> str:
-            for chapter in engine.world.chapters:
-                for scene in chapter.scenes:
-                    if scene.id == state.current_scene:
-                        return scene.text
-            return ""  # 悬空 current_scene（理论不可达）：退空串，state 本体仍是真源
-
-        return {"id": state.current_scene, "text": _text()}
+        """当前场景视图：{id, text, npc_ids}。text/npc_ids 从 world 章包取（spec §5.4）。"""
+        scene = _find_scene(state.current_scene)
+        return {
+            "id": state.current_scene,
+            "text": scene.text if scene is not None else "",  # 悬空 current_scene（理论不可达）
+            "npc_ids": list(scene.npc_ids) if scene is not None else [],
+        }
 
     router = APIRouter()
 
     @router.get("/api/health")
     def health() -> dict:
-        return {"ok": True, "mode": "local"}
+        return {"ok": True, "mode": llm_mode}
 
     @router.get("/api/chapters")
     def chapters_catalog() -> dict:
@@ -123,5 +158,32 @@ def build_router(engine: GameEngine, store: SessionStore) -> APIRouter:
             "game_over": result.game_over,
             "ending": result.ending,
         }
+
+    @router.post("/api/games/{game_id}/npcs/{npc_id}/talk")
+    def npc_talk(game_id: str, npc_id: str, body: TalkBody) -> dict:
+        state = _load_game(game_id)
+        npc = _npcs_by_id.get(npc_id)
+        if npc is None:
+            raise HTTPException(status_code=404, detail=f"NPC 不存在：{npc_id}")
+        text = (body.text or "").strip()
+        if not text:
+            raise HTTPException(status_code=400, detail="text 必填且不能为空白")
+        scene = _find_scene(state.current_scene)
+        if scene is None or npc_id not in scene.npc_ids:
+            raise HTTPException(status_code=400, detail=f"NPC「{npc_id}」不在当前场景")
+        result = _guard(npc_id).talk(game_id, text)
+        return {
+            "reply": result.output,
+            "blocked": result.verdict == VERDICT_BLOCKED,
+            "guard_evidence": list(result.matched),
+            "memory_turn": result.memory_turn,
+        }
+
+    @router.get("/api/games/{game_id}/npcs/{npc_id}/memory")
+    def npc_memory(game_id: str, npc_id: str) -> dict:
+        _load_game(game_id)
+        if npc_id not in _npcs_by_id:
+            raise HTTPException(status_code=404, detail=f"NPC 不存在：{npc_id}")
+        return {"entries": memory.entries(game_id, npc_id)}
 
     return router

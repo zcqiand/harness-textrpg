@@ -140,6 +140,8 @@ harness-textrpg/
 | 端点 | 语义 |
 |---|---|
 | `GET /api/health` | `{"ok":true,"mode":"local"}`（家族探活契约同款） |
+
+> v2 覆盖注记：`mode` 自 v2.0.0 起随 `LLM_MODE`（mock/live）反映，见 v2/v3 design spec §6（人裁）——上表行原文保持不变。
 | `GET /api/chapters` | 章回**静态目录**（id/title/序，无局上下文，**不携带锁定状态**） |
 | `POST /api/games` | 建局（`{player_name}`）→ 201 `{id, state}` |
 | `POST /api/games/{id}/choice` | 提交抉择 `{scene_id, choice_id}` → `{messages, state, unlocked_locks, game_over, ending?}` |

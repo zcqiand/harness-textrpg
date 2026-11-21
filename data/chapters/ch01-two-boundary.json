@@ -23,6 +23,7 @@
     {
       "id": "s01_village",
       "text": "晨光初照，两界山遥遥在望。山下小村炊烟未散，师徒一行在此歇脚：前路乏粮，再往西便是虎狼之地。",
+      "npc_ids": ["npc_woodcutter"],
       "choices": [
         {"id": "c_take_rations", "text": "向村家化些干粮", "effects": [{"item_add": "dry_rations"}]},
         {"id": "c_talk_woodcutter", "text": "与门前樵夫攀谈", "goto": "s01_woodcutter_hut", "effects": [{"flag": "helped_woodcutter"}, {"attr": {"insight": 1}}]},
@@ -32,6 +33,7 @@
     {
       "id": "s01_woodcutter_hut",
       "text": "樵夫引师徒入茅舍奉茶。他曾入山遇险，幸得相救，因此感念东土圣僧，愿指点入山樵径。",
+      "npc_ids": ["npc_woodcutter"],
       "choices": [
         {"id": "c_listen", "text": "细听樵夫指点山路", "goto": "s01_village", "effects": [{"attr": {"insight": 1}}]},
         {"id": "c_visit_temple", "text": "顺道去山间古刹一观", "goto": "s01_temple"}

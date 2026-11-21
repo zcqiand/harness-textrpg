@@ -40,6 +40,7 @@
     {
       "id": "s03_cave_door",
       "text": "芭蕉洞前，悟空整一整直裰，叫门借扇。洞门开处，铁扇公主携两柄芭蕉扇而出——闻得「悟空」二字，柳眉倒竖：当年你坑害我儿红孩儿，送到观音处做了童子，母子不得相见！新仇旧恨一齐涌上，这一柄扇，是借是夺，只在当下。",
+      "npc_ids": ["npc_fan_princess"],
       "choices": [
         {"id": "c_request", "text": "陪笑脸好言相求，诉说取经大义", "lock": "lock_ch03_fan_request", "goto": "s03_plea"},
         {"id": "c_snatch", "text": "不与多言，索性强抢了宝扇便走", "goto": "s03_snatch"}

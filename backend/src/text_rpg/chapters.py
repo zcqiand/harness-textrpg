@@ -32,6 +32,7 @@ class Scene:
     id: str
     text: str
     choices: list[Choice] = field(default_factory=list)
+    npc_ids: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -117,6 +118,7 @@ def _load_chapter(path: Path) -> Chapter:
         Scene(
             id=sc["id"],
             text=sc["text"],
+            npc_ids=[str(x) for x in sc.get("npc_ids", [])],
             choices=[
                 Choice(
                     id=c["id"],

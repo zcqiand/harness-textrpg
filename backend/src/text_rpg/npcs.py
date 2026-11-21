@@ -6,6 +6,7 @@ Audit checks (errors block startup, same shape as locks.audit):
 3. empty outside -> error
 4. memory_spec.event_tags not a mapping (tag -> trigger word list) -> error
 5. event_tags vocab value not a str list / empty list -> error
+6. scene-side dangling npc_ids (scene references nonexistent NPC id) -> error
 """
 # @impl M02.F05.I01
 # @impl M04.F02.I01
@@ -82,6 +83,23 @@ def audit_npcs(npcs: list, world: World) -> AuditReport:
     errors = []
     warnings = []
     chapter_ids = {c.id for c in world.chapters}
+    npc_by_id = {n.id: n for n in npcs}
+    # 场景侧挂载审计（悬空查同族三连）：形状校验 → 悬空查 → 跨章挂载查。
+    for chapter in world.chapters:
+        for scene in chapter.scenes:
+            refs = scene.npc_ids
+            if not isinstance(refs, list) or not all(isinstance(x, str) for x in refs):
+                errors.append(f"场景「{scene.id}」npc_ids 形状不符（必须是 str 列表）：{refs!r}")
+                continue
+            for ref in refs:
+                npc = npc_by_id.get(ref)
+                if npc is None:
+                    errors.append(f"场景「{scene.id}」悬空 npc_ids 引用：{ref}")
+                elif npc.chapter != chapter.id:
+                    errors.append(
+                        f"场景「{scene.id}」（章 {chapter.id}）跨章挂载 NPC「{ref}」"
+                        f"（该 NPC 契约属章 {npc.chapter}）"
+                    )
     for n in npcs:
         if n.chapter not in chapter_ids:
             errors.append(f"NPC「{n.id}」悬空 chapter 引用：{n.chapter}")

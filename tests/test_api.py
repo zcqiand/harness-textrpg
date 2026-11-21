@@ -85,16 +85,20 @@ def make_world() -> World:
 
 
 def make_client() -> tuple[TestClient, object]:
-    """构造测试 app：内存 world + SessionStore，返回 (client, store)。"""
+    """构造测试 app：内存 world + SessionStore + v2 NPC 装配面（mock 注入）。"""
+    from text_rpg.llm import MockLLMClient
     from text_rpg.locks import build_registry
+    from text_rpg.memory import MemoryStore
     from text_rpg.persistence import SessionStore
     from text_rpg.routes import build_router
 
     world = make_world()
     engine = GameEngine(world, build_registry(world))
     store = SessionStore()
+    npcs: list = []
+    memory = MemoryStore(npcs)
     app = FastAPI()
-    app.include_router(build_router(engine, store))
+    app.include_router(build_router(engine, store, npcs=npcs, llm_client=MockLLMClient(), memory=memory, llm_mode='mock'))
     return TestClient(app), store
 
 
@@ -108,7 +112,7 @@ def test_health():
     client, _ = make_client()
     resp = client.get("/api/health")
     assert resp.status_code == 200
-    assert resp.json() == {"ok": True, "mode": "local"}
+    assert resp.json() == {"ok": True, "mode": "mock"}
 
 
 def test_chapters_catalog_static():
@@ -156,7 +160,7 @@ def test_get_game_embeds_choices_endings_chapters_views():
     # state + scene + 三视图五件
     assert set(body) == {"state", "scene", "choices", "endings", "chapters"}
     assert body["state"]["current_scene"] == "s1"
-    assert body["scene"] == {"id": "s1", "text": "山门前"}
+    assert body["scene"] == {"id": "s1", "text": "山门前", "npc_ids": []}
     # choices_view：逐 choice 锁评估
     by_id = {c["id"]: c for c in body["choices"]}
     assert set(by_id) == {"look", "pray", "open", "fall"}
@@ -297,20 +301,31 @@ def test_startup_audit_gate_blocks_broken_world():
 
 
 def test_get_game_scene_carries_real_ch01_prose():
-    """终审修复：read_game 响应携带 scene={id,text}——场景正文直达前端（spec §5.4 场景文案）。
-
-    用真仓 data/ 装配引擎：断言 scene.id = 起手场景，text = ch01 真实正文前缀。
-    """
+    """read_game 场景视图面：真仓 data/ 装配，起手场景视图带 npc_ids。"""
     from text_rpg.chapters import load_world
+    from text_rpg.llm import MockLLMClient
     from text_rpg.locks import build_registry
+    from text_rpg.memory import MemoryStore
+    from text_rpg.npcs import load_npcs
     from text_rpg.persistence import SessionStore
     from text_rpg.routes import build_router
 
     data_dir = Path(__file__).resolve().parents[1] / "data"
     world = load_world(data_dir)
     engine = GameEngine(world, build_registry(world))
+    npcs = load_npcs(data_dir=data_dir)
+    memory = MemoryStore(npcs)
     app = FastAPI()
-    app.include_router(build_router(engine, SessionStore()))
+    app.include_router(
+        build_router(
+            engine,
+            SessionStore(),
+            npcs=npcs,
+            llm_client=MockLLMClient(),
+            memory=memory,
+            llm_mode="mock",
+        )
+    )
     client = TestClient(app)
     game_id = new_game(client)
     resp = client.get(f"/api/games/{game_id}")

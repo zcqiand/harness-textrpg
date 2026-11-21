@@ -24,7 +24,7 @@
 ```bash
 pip install -e ./backend && pytest -q          # 后端全绿（无 Key 无网无 Docker）
 cd frontend && npm run build && npm run test   # 前端双绿（tsc strict + vitest）
-APP_PORT=8806 python -c "from text_rpg.webserver import main; main()"   # 冒烟：GET /api/health → {"ok":true,"mode":"local"}
+APP_PORT=8806 python -c "from text_rpg.webserver import main; main()"   # 冒烟：GET /api/health → {"ok":true,"mode":"mock"}（mode 随 LLM_MODE：mock/live）
 # 注意：uvicorn CLI 形状不消费 APP_PORT（只读于 webserver.main()，会绑默认 8000）——起服/冒烟一律走 main() 入口。
 ```
 

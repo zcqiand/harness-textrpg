@@ -43,6 +43,7 @@
     {
       "id": "s02_second_meet",
       "text": "山坳里又转出一个八旬老妪，拄着弯头竹杖，一步一声地哭着寻女儿。风过处，妖气比前更紧三分——分明还是那白骨夫人，第二次凑近唐僧。",
+      "npc_ids": ["npc_bone_elder"],
       "choices": [
         {"id": "c_verify", "text": "不忙动手，再验一次真假", "effects": [{"flag": "white_bone_evidence_2"}], "goto": "s02_after_second"},
         {"id": "c_strike_2", "text": "认准妖身，劈头就打", "lock": "lock_ch02_second_strike", "goto": "s02_after_second"}

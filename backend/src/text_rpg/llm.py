@@ -128,20 +128,24 @@ class LiveLLMClient:
         return content
 
 
-def create_client() -> MockLLMClient | LiveLLMClient:
-    """按 LLM_MODE 装配客户端（env fail-fast，禁兜底）。"""
+def create_client() -> tuple[MockLLMClient | LiveLLMClient, str]:
+    """按 LLM_MODE 装配客户端，单源下发 (client, mode)（env fail-fast，禁兜底；
+    mode 随返回值走，消费方不再二次直读 env）。"""
     mode = os.environ.get("LLM_MODE")
     if mode is None:
         raise LLMError("缺少环境变量 LLM_MODE")
     if mode == "mock":
-        return MockLLMClient()
+        return MockLLMClient(), "mock"
     if mode == "live":
         missing = [k for k in _LIVE_KEYS if not os.environ.get(k)]
         if missing:
             raise LLMError(f"LLM_MODE=live 缺少环境变量：{', '.join(missing)}")
-        return LiveLLMClient(
-            base_url=os.environ["LLM_BASE_URL"],
-            api_key=os.environ["LLM_API_KEY"],
-            model=os.environ["LLM_MODEL"],
+        return (
+            LiveLLMClient(
+                base_url=os.environ["LLM_BASE_URL"],
+                api_key=os.environ["LLM_API_KEY"],
+                model=os.environ["LLM_MODEL"],
+            ),
+            "live",
         )
     raise LLMError(f"LLM_MODE 非法值：{mode!r}（只认 mock/live）")

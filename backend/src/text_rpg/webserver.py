@@ -14,8 +14,10 @@ from fastapi import FastAPI
 from text_rpg.chapters import load_world
 from text_rpg.engine import GameEngine
 from text_rpg.guard_anchors import GUARD_ANCHORS, audit_guards
+from text_rpg.llm import create_client
 from text_rpg.lock_anchors import ANCHORS
 from text_rpg.locks import audit, build_registry
+from text_rpg.memory import MemoryStore
 from text_rpg.npcs import audit_npcs, load_npcs
 from text_rpg.persistence import SessionStore
 from text_rpg.routes import build_router
@@ -49,8 +51,18 @@ def create_app() -> FastAPI:
     npcs = load_npcs(data_dir=_data_dir())
     _audit_gate(world, registry, ANCHORS, npcs, GUARD_ANCHORS)
     engine = GameEngine(world, registry)
+    llm_client, llm_mode = create_client()
     application = FastAPI(title="harness-textrpg")
-    application.include_router(build_router(engine, SessionStore()))
+    application.include_router(
+        build_router(
+            engine,
+            SessionStore(),
+            npcs=npcs,
+            llm_client=llm_client,
+            memory=MemoryStore(npcs),
+            llm_mode=llm_mode,
+        )
+    )
     return application
 
 

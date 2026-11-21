@@ -58,8 +58,9 @@ def test_mock_mode_does_not_read_live_keys(monkeypatch: pytest.MonkeyPatch) -> N
     monkeypatch.setenv("LLM_BASE_URL", "not-a-url")
     monkeypatch.setenv("LLM_API_KEY", "garbage")
     monkeypatch.setenv("LLM_MODEL", "")
-    client = create_client()
+    client, mode = create_client()
     assert isinstance(client, MockLLMClient)
+    assert mode == "mock"
 
 
 # fn: M02.F05.I04
@@ -71,7 +72,7 @@ def test_mock_client_never_touches_network(monkeypatch: pytest.MonkeyPatch) -> N
 
     monkeypatch.setattr("socket.socket", _ban)
     monkeypatch.setenv("LLM_MODE", "mock")
-    client = create_client()
+    client, _ = create_client()
     assert client.generate("人设", "玩家说：你好") == client.default_reply
 
 
@@ -249,3 +250,12 @@ def test_live_base_url_trailing_slash_is_normalized() -> None:
 def test_strip_think_is_standalone() -> None:
     assert strip_think("<think>a</think>b") == "b"
     assert strip_think("  b <think>a</think> ") == "b"
+
+
+# fn: M02.F05.I04
+def test_create_client_returns_client_mode_pair(monkeypatch: pytest.MonkeyPatch) -> None:
+    """create_client 单源下发 (client, mode)：live 形状断言（mock 形状见上文 mock 用例）。"""
+    _live_env(monkeypatch)
+    client, mode = create_client()
+    assert isinstance(client, LiveLLMClient)
+    assert mode == "live"
