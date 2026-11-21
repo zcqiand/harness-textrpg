@@ -1,0 +1,24 @@
+{
+  "id": "enc_fruit_grove",
+  "name": "野果林止渴",
+  "params": ["place", "fruit"],
+  "scene_template": "行至{place}，烈日当空，人困马乏。林间果木参天，一枚{fruit}坠地有声。守林道童睡意正酣，碑上刻着摘果之禁，止渴有欲，取之有道。",
+  "lock_slots": [
+    {
+      "id": "enc_fruit_grove_lock_patience",
+      "requires": [{"attr": "insight", "op": ">=", "value": 3}],
+      "denial": "果林禁令刻在碑上，看不出时节玄机贸然伸手，恐犯道童之忌。"
+    },
+    {
+      "id": "enc_fruit_grove_lock_gift",
+      "requires": [{"flag": "chapter_ch01_complete"}],
+      "denial": "道童醒后盘问来历，未过两界山之人来历不明，他转身封林不容分说。"
+    }
+  ],
+  "effect_slots": [
+    {"attr": {"might": 1}},
+    {"flag": "enc_fruit_tasted"},
+    {"item_add": "immortal_fruit"}
+  ],
+  "difficulty": {"attr_min": 3, "locks_max": 2}
+}

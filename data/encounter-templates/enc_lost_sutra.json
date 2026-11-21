@@ -1,0 +1,24 @@
+{
+  "id": "enc_lost_sutra",
+  "name": "晒经石遗卷",
+  "params": ["place", "elder"],
+  "scene_template": "行至{place}，山雨骤至，驮经白马受惊，数函经卷散落{place}石上。一位{elder}拦路合掌：「经卷既湿，须有慧眼者辨其完好，方可西行。」",
+  "lock_slots": [
+    {
+      "id": "enc_lost_sutra_lock_discern",
+      "requires": [{"attr": "insight", "op": ">=", "value": 2}],
+      "denial": "经页粘连难辨，悟性不足看不出字迹存亡，硬揭只会损毁经文。"
+    },
+    {
+      "id": "enc_lost_sutra_lock_devotion",
+      "requires": [{"item": "dry_rations"}],
+      "denial": "老者护经饥疲交加，囊中无干粮可共，他不肯开函验经。"
+    }
+  ],
+  "effect_slots": [
+    {"attr": {"insight": 1}},
+    {"flag": "enc_sutra_salvaged"},
+    {"item_add": "sutra_scroll"}
+  ],
+  "difficulty": {"attr_min": 2, "locks_max": 3}
+}
