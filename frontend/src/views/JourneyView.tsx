@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, getGame, submitChoice } from "../api";
+import type { SceneViewV2 } from "../api";
 import type {
   ChapterView,
   ChoiceView,
   GameView,
   GameState,
   MissingCondition,
-  SceneView,
 } from "../types";
+import TalkView from "./TalkView";
 // @entry M03.F02.I01
 // @entry M03.F02.I02
 
@@ -46,9 +47,11 @@ function isSessionGone(exc: unknown): boolean {
 export default function JourneyView({ gameId, initialState, onSessionGone }: JourneyViewProps) {
   const [state, setState] = useState<GameState>(initialState);
   const [chapters, setChapters] = useState<ChapterView[]>([]);
-  const [scene, setScene] = useState<SceneView | null>(null);
+  const [scene, setScene] = useState<SceneViewV2 | null>(null);
   const [choices, setChoices] = useState<ChoiceView[] | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
+  /** 正在对话的 NPC id；null=探索态（未进对话视图）。 */
+  const [talkingNpcId, setTalkingNpcId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   /** 本轮刚解锁、正处高亮期（1.5s 内）的抉择 id 集。 */
@@ -146,11 +149,40 @@ export default function JourneyView({ gameId, initialState, onSessionGone }: Jou
   const chapterTitle =
     chapters.find((c) => c.id === state.current_chapter)?.title ?? state.current_chapter;
 
+  if (talkingNpcId !== null) {
+    const talkingNpc = (scene?.npcs ?? []).find((npc) => npc.id === talkingNpcId);
+    return (
+      <TalkView
+        gameId={gameId}
+        npcId={talkingNpcId}
+        npcName={talkingNpc !== undefined ? talkingNpc.name : talkingNpcId}
+        onBack={() => setTalkingNpcId(null)}
+        onSessionGone={onSessionGone}
+      />
+    );
+  }
+
+  const npcs = scene?.npcs ?? [];
+
   return (
     <section aria-label="探索视图">
       <h2>{chapterTitle}</h2>
       {scene !== null && <p className="scene-text">{scene.text}</p>}
       {error !== null && <p role="alert">{error}</p>}
+      {npcs.length > 0 && (
+        <div aria-label="在场人物">
+          {npcs.map((npc) => (
+            <button
+              key={npc.id}
+              type="button"
+              data-fn="M03.F04.I01"
+              onClick={() => setTalkingNpcId(npc.id)}
+            >
+              {`与${npc.name}对话`}
+            </button>
+          ))}
+        </div>
+      )}
       {choices === null ? (
         <p>装载中……</p>
       ) : (

@@ -87,12 +87,16 @@ def build_router(
         return None
 
     def _scene_view(state: GameState) -> dict:
-        """当前场景视图：{id, text, npc_ids}。text/npc_ids 从 world 章包取（spec §5.4）。"""
+        """当前场景视图：{id, text, npcs}。npcs 由章包 npc_ids 经 _npcs_by_id 映射带名
+        （主线裁定 2026-11-21：视图层升格 npcs:[{id,name}]，数据面 npc_ids 不动）。"""
         scene = _find_scene(state.current_scene)
+        if scene is None:
+            # 悬空 current_scene（理论不可达）：空视图保形状统一，前端不用判键
+            return {"id": state.current_scene, "text": "", "npcs": []}
         return {
             "id": state.current_scene,
-            "text": scene.text if scene is not None else "",  # 悬空 current_scene（理论不可达）
-            "npc_ids": list(scene.npc_ids) if scene is not None else [],
+            "text": scene.text,
+            "npcs": [{"id": npc_id, "name": _npcs_by_id[npc_id].name} for npc_id in scene.npc_ids],
         }
 
     router = APIRouter()

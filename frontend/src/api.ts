@@ -7,6 +7,7 @@ import type {
   ChoiceResultView,
   CreatedGame,
   GameView,
+  SceneView,
 } from "./types";
 
 const API_BASE = "/api";
@@ -52,8 +53,8 @@ export function createGame(playerName: string): Promise<CreatedGame> {
 }
 
 /** 读局：state + choices/endings/chapters 三视图。未知 id → 404。 */
-export function getGame(gameId: string): Promise<GameView> {
-  return request<GameView>(`/games/${encodeURIComponent(gameId)}`);
+export function getGame(gameId: string): Promise<GameViewV2> {
+  return request<GameViewV2>(`/games/${encodeURIComponent(gameId)}`);
 }
 
 /** 提交抉择。未知 scene/choice 或终局后提交 → 400。 */
@@ -69,5 +70,69 @@ export function submitChoice(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ scene_id: sceneId, choice_id: choiceId }),
     },
+  );
+}
+
+/* ---------- v2：NPC 对话面（routes.py _scene_view / npc_talk / npc_memory 同形） ---------- */
+
+/**
+ * v2 场景视图：在 v1 {id, text} 上挂 NPC 入口（routes.py _scene_view 恒下发
+ * npcs 数组，元素 {id, name}，视图层带名——数据面 npc_ids 不动）。可选标注：
+ * v1 测试夹具无此键，前端以「缺省=无 NPC」容错。
+ */
+export interface NpcRef {
+  id: string;
+  name: string;
+}
+
+export interface SceneViewV2 extends SceneView {
+  npcs?: NpcRef[];
+}
+
+/** GET /api/games/{id}（v2）：scene 携 npcs（{id,name}，视图层带名）。 */
+export interface GameViewV2 extends GameView {
+  scene: SceneViewV2;
+}
+
+/** 记忆条目（memory.py record 落账形状）。 */
+export interface MemoryEntry {
+  turn: number;
+  player_text: string;
+  npc_text: string;
+  event_tags: string[];
+}
+
+/** GET /api/games/{id}/npcs/{npc_id}/memory 响应。 */
+export interface NpcMemoryView {
+  entries: MemoryEntry[];
+}
+
+/**
+ * POST /api/games/{id}/npcs/{npc_id}/talk 响应：恒四键（放行时
+ * guard_evidence=[]；被拦轮 memory_turn=null 不计轮次）。
+ */
+export interface TalkResultView {
+  reply: string;
+  blocked: boolean;
+  guard_evidence: string[];
+  memory_turn: number | null;
+}
+
+/** 对某 NPC 说一句话。空/空白输入后端 400；NPC 不在当前场景 400；未知 NPC 404。 */
+export function talkToNpc(gameId: string, npcId: string, text: string): Promise<TalkResultView> {
+  return request<TalkResultView>(
+    `/games/${encodeURIComponent(gameId)}/npcs/${encodeURIComponent(npcId)}/talk`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+    },
+  );
+}
+
+/** 读某 NPC 的对话记忆全量清单（被拦轮不落账，故轮次有跳档属正常）。 */
+export function fetchNpcMemory(gameId: string, npcId: string): Promise<NpcMemoryView> {
+  return request<NpcMemoryView>(
+    `/games/${encodeURIComponent(gameId)}/npcs/${encodeURIComponent(npcId)}/memory`,
   );
 }

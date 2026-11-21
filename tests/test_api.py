@@ -98,7 +98,11 @@ def make_client() -> tuple[TestClient, object]:
     npcs: list = []
     memory = MemoryStore(npcs)
     app = FastAPI()
-    app.include_router(build_router(engine, store, npcs=npcs, llm_client=MockLLMClient(), memory=memory, llm_mode='mock'))
+    app.include_router(
+        build_router(
+            engine, store, npcs=npcs, llm_client=MockLLMClient(), memory=memory, llm_mode="mock"
+        )
+    )
     return TestClient(app), store
 
 
@@ -160,7 +164,7 @@ def test_get_game_embeds_choices_endings_chapters_views():
     # state + scene + 三视图五件
     assert set(body) == {"state", "scene", "choices", "endings", "chapters"}
     assert body["state"]["current_scene"] == "s1"
-    assert body["scene"] == {"id": "s1", "text": "山门前", "npc_ids": []}
+    assert body["scene"] == {"id": "s1", "text": "山门前", "npcs": []}
     # choices_view：逐 choice 锁评估
     by_id = {c["id"]: c for c in body["choices"]}
     assert set(by_id) == {"look", "pray", "open", "fall"}
@@ -301,7 +305,7 @@ def test_startup_audit_gate_blocks_broken_world():
 
 
 def test_get_game_scene_carries_real_ch01_prose():
-    """read_game 场景视图面：真仓 data/ 装配，起手场景视图带 npc_ids。"""
+    """read_game 场景视图面：真仓 data/ 装配，起手场景视图带 npcs。"""
     from text_rpg.chapters import load_world
     from text_rpg.llm import MockLLMClient
     from text_rpg.locks import build_registry

@@ -62,7 +62,10 @@ def make_world() -> World:
                 id="s1",
                 text="山门前",
                 npc_ids=["npc_w"],
-                choices=[Choice(id="west", text="西行", goto="s2"), Choice(id="end_run", text="折返东归", effects=[{"flag": "end_now"}])],
+                choices=[
+                    Choice(id="west", text="西行", goto="s2"),
+                    Choice(id="end_run", text="折返东归", effects=[{"flag": "end_now"}]),
+                ],
             ),
             Scene(id="s2", text="山门后", choices=[]),
         ],
@@ -101,7 +104,7 @@ def new_game(client: TestClient) -> str:
 
 
 def make_real_client() -> tuple[TestClient, MemoryStore]:
-    """真仓 data/ 装配 app：验证三章回包真实 npc_ids 面到 API 视图。"""
+    """真仓 data/ 装配 app：验证三章回包真实 npcs 视图面到 API。"""
     world = load_world(_DATA_DIR)
     engine = GameEngine(world, build_registry(world))
     npcs = load_npcs(data_dir=_DATA_DIR)
@@ -124,24 +127,28 @@ def make_real_client() -> tuple[TestClient, MemoryStore]:
 
 
 # fn: M01.F02.I01
-def test_read_game_scene_carries_npc_ids():
-    """读局响应的当前场景视图带出 npc_ids（spec §5.4：对话入口来自场景数据）。"""
+def test_read_game_scene_carries_npcs():
+    """读局响应的当前场景视图带出 npcs:[{id,name}]（视图层带名，数据面 npc_ids 不动）。"""
     client, _ = make_client()
     game_id = new_game(client)
     resp = client.get(f"/api/games/{game_id}")
     assert resp.status_code == 200
-    assert resp.json()["scene"] == {"id": "s1", "text": "山门前", "npc_ids": ["npc_w"]}
+    assert resp.json()["scene"] == {
+        "id": "s1",
+        "text": "山门前",
+        "npcs": [{"id": "npc_w", "name": "樵夫"}],
+    }
 
 
 # fn: M01.F02.I01
-def test_scene_view_npc_ids_empty_when_no_npc_mounted():
-    """未挂 NPC 的场景 npc_ids 为空表（形状统一，前端不用判键）。"""
+def test_scene_view_npcs_empty_when_no_npc_mounted():
+    """未挂 NPC 的场景 npcs 为空表（形状统一，前端不用判键）。"""
     client, _ = make_client()
     game_id = new_game(client)
     resp = client.post(f"/api/games/{game_id}/choice", json={"scene_id": "s1", "choice_id": "west"})
     assert resp.status_code == 200
     assert resp.json()["state"]["current_scene"] == "s2"
-    assert client.get(f"/api/games/{game_id}").json()["scene"]["npc_ids"] == []
+    assert client.get(f"/api/games/{game_id}").json()["scene"]["npcs"] == []
 
 
 # fn: M01.F02.I01
@@ -180,15 +187,15 @@ def test_chapter_packs_declare_npc_ids_exact():
 
 
 # fn: M01.F02.I01
-def test_real_world_start_scene_view_carries_npc_ids():
-    """真仓 data/ 装配：起手场景 s01_village 的 npc_ids 直达读局响应。"""
+def test_real_world_start_scene_view_carries_npcs():
+    """真仓 data/ 装配：起手场景 s01_village 的 npcs 直达读局响应（视图层带名）。"""
     client, _ = make_real_client()
     game_id = new_game(client)
     resp = client.get(f"/api/games/{game_id}")
     assert resp.status_code == 200
     scene = resp.json()["scene"]
     assert scene["id"] == "s01_village"
-    assert scene["npc_ids"] == ["npc_woodcutter"]
+    assert scene["npcs"] == [{"id": "npc_woodcutter", "name": "樵夫"}]
 
 
 # fn: M01.F02.I01
@@ -376,9 +383,7 @@ def test_talk_allowed_after_game_over():
     """终局后 talk 放行——钉行为：对话纯层不写游戏状态故不拦（依据 spec §5.3），防误修。"""
     client, memory = make_client()
     game_id = new_game(client)
-    r = client.post(
-        f"/api/games/{game_id}/choice", json={"scene_id": "s1", "choice_id": "end_run"}
-    )
+    r = client.post(f"/api/games/{game_id}/choice", json={"scene_id": "s1", "choice_id": "end_run"})
     assert r.json()["game_over"] is True
     resp = client.post(f"/api/games/{game_id}/npcs/npc_w/talk", json={"text": "别来无恙"})
     assert resp.status_code == 200
